@@ -13,7 +13,10 @@ class APIClient {
 
   async request(endpoint, options = {}) {
     const url = `${this.baseURL}${endpoint}`
+    
+    // Default configuration with improved CORS handling
     const config = {
+      method: 'GET',
       headers: {
         'Content-Type': 'application/json',
         ...options.headers,
@@ -23,16 +26,33 @@ class APIClient {
       ...options,
     }
 
+    console.log(`Making API request to: ${url}`, config)
+
     try {
       const response = await fetch(url, config)
       
-      // Check if response is HTML (indicating an error page)
+      console.log('Response status:', response.status)
+      console.log('Response headers:', Object.fromEntries(response.headers.entries()))
+      
+      // Check if response is HTML (indicating an error page or CORS issue)
       const contentType = response.headers.get('content-type')
       if (contentType && contentType.includes('text/html')) {
-        throw new Error('Server returned HTML instead of JSON. Check backend deployment.')
+        const htmlText = await response.text()
+        console.error('Server returned HTML instead of JSON:', htmlText.substring(0, 500))
+        throw new Error('Server returned HTML instead of JSON. This might be a CORS issue or server configuration problem.')
       }
       
-      const data = await response.json()
+      let data
+      try {
+        data = await response.json()
+      } catch (parseError) {
+        console.error('Failed to parse JSON response:', parseError)
+        const responseText = await response.text()
+        console.error('Raw response:', responseText.substring(0, 500))
+        throw new Error('Invalid JSON response from server')
+      }
+
+      console.log('Response data:', data)
 
       if (!response.ok) {
         throw new Error(data.error || `HTTP error! status: ${response.status}`)
@@ -42,9 +62,13 @@ class APIClient {
     } catch (error) {
       console.error('API request failed:', error)
       
-      // Better error handling for CORS and network issues
+      // Enhanced error handling for common issues
       if (error.name === 'TypeError' && error.message.includes('Failed to fetch')) {
-        throw new Error('Network error: Unable to connect to server. Please check if the backend is running.')
+        throw new Error('Network error: Unable to connect to server. This could be a CORS issue or the backend might be down.')
+      }
+      
+      if (error.message.includes('CORS')) {
+        throw new Error('CORS error: The backend is not properly configured to accept requests from this domain.')
       }
       
       throw error
@@ -86,20 +110,46 @@ class APIClient {
   }
 }
 
-// Test connection function
+// Test connection function with detailed debugging
 export const testConnection = async () => {
   const api = new APIClient()
   try {
+    console.log('Testing connection to:', API_BASE_URL)
     const response = await api.get('/health')
     console.log('Backend connection successful:', response)
-    return true
+    return { success: true, response }
   } catch (error) {
     console.error('Backend connection failed:', error)
-    return false
+    return { success: false, error: error.message }
   }
 }
 
-// Rest of your existing code remains the same...
+// Test CORS specifically
+export const testCORS = async () => {
+  const api = new APIClient()
+  try {
+    console.log('Testing CORS with preflight request...')
+    
+    // First test a simple GET request
+    const getResponse = await api.get('/health')
+    console.log('GET request successful:', getResponse)
+    
+    // Then test a POST request which triggers preflight
+    const postResponse = await api.post('/api/hero/quote', {
+      product_type: 'home_protection',
+      term_years: 1,
+      coverage_limit: 500,
+      customer_type: 'retail'
+    })
+    console.log('POST request successful:', postResponse)
+    
+    return { success: true, message: 'CORS is working correctly' }
+  } catch (error) {
+    console.error('CORS test failed:', error)
+    return { success: false, error: error.message }
+  }
+}
+
 const api = new APIClient()
 
 // Health Check APIs
@@ -113,14 +163,34 @@ export const heroAPI = {
   checkHealth: () => api.get('/api/hero/health'),
   getAllProducts: () => api.get('/api/hero/products'),
   getProductsByCategory: (category) => api.get(`/api/hero/products/${category}`),
-  generateQuote: (quoteData) => api.post('/api/hero/quote', quoteData),
+  generateQuote: async (quoteData) => {
+    console.log('HeroAPI.generateQuote called with:', quoteData)
+    try {
+      const response = await api.post('/api/hero/quote', quoteData)
+      console.log('HeroAPI.generateQuote response:', response)
+      return response
+    } catch (error) {
+      console.error('HeroAPI.generateQuote error:', error)
+      throw error
+    }
+  },
 }
 
 // VSC APIs
 export const vscAPI = {
   checkHealth: () => api.get('/api/vsc/health'),
   getCoverageOptions: () => api.get('/api/vsc/coverage-options'),
-  generateQuote: (quoteData) => api.post('/api/vsc/quote', quoteData),
+  generateQuote: async (quoteData) => {
+    console.log('VSCAPI.generateQuote called with:', quoteData)
+    try {
+      const response = await api.post('/api/vsc/quote', quoteData)
+      console.log('VSCAPI.generateQuote response:', response)
+      return response
+    } catch (error) {
+      console.error('VSCAPI.generateQuote error:', error)
+      throw error
+    }
+  },
 }
 
 // VIN Decoder APIs
@@ -152,6 +222,10 @@ export const handleAPIError = (error) => {
     return 'Server configuration error. Please contact support.'
   }
   
+  if (error.message.includes('CORS')) {
+    return 'Server CORS configuration issue. Please contact support.'
+  }
+  
   if (error.message.includes('404')) {
     return 'Service not found. Please try again later.'
   }
@@ -167,7 +241,7 @@ export const handleAPIError = (error) => {
   return error.message || 'An unexpected error occurred. Please try again.'
 }
 
-// Utility functions (keep existing ones)
+// Utility functions
 export const formatCurrency = (amount) => {
   return new Intl.NumberFormat('en-US', {
     style: 'currency',
@@ -183,7 +257,7 @@ export const formatDate = (dateString) => {
   }).format(new Date(dateString))
 }
 
-// Update your validateQuoteData function in api.js:
+// Validation function
 export const validateQuoteData = (data, type) => {
   const errors = []
 
@@ -224,6 +298,16 @@ export const validateQuoteData = (data, type) => {
   }
 
   return errors
+}
+
+// Debug function to help troubleshoot CORS issues
+export const debugCORS = () => {
+  console.log('=== CORS Debug Info ===')
+  console.log('Current origin:', window.location.origin)
+  console.log('API Base URL:', API_BASE_URL)
+  console.log('Environment:', process.env.NODE_ENV)
+  console.log('User Agent:', navigator.userAgent)
+  console.log('========================')
 }
 
 export default api
