@@ -16,7 +16,37 @@ const HeroProductsPage = () => {
     const fetchProducts = async () => {
       try {
         const response = await heroAPI.getAllProducts()
-        setProducts(response.data || [])
+        const allProducts = []
+        
+        if (responseData && responseData.data) {
+          // Iterate through each category
+          Object.entries(responseData.data).forEach(([categoryKey, categoryData]) => {
+            if (categoryData && categoryData.products) {
+              // Add each product with category information
+              categoryData.products.forEach(product => {
+                allProducts.push({
+                  ...product,
+                  category: categoryKey,
+                  category_name: categoryData.category_name,
+                  category_description: categoryData.category_description,
+                  id: product.product_code,
+                  name: product.product_name,
+                  description: product.detailed_description,
+                  short_description: product.short_description,
+                  min_price: product.price_range?.min_price || product.base_price,
+                  max_price: product.price_range?.max_price || product.base_price,
+                  terms: product.terms_available || [1, 2, 3],
+                  features: product.features || [],
+                  coverage_limits: product.coverage_limits || [],
+                  base_price: product.base_price
+                })
+              })
+            }
+          })
+        }
+        
+        console.log('Transformed products:', allProducts)
+        setProducts(allProducts)
       } catch (error) {
         console.error('Failed to fetch products:', error)
       } finally {

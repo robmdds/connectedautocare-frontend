@@ -1,90 +1,37 @@
-// Enhanced API Configuration and Utilities for ConnectedAutoCare.com
+// API Configuration and Utilities for ConnectedAutoCare.com
 
-// API Base URL with fallback logic
-const getAPIBaseURL = () => {
-  // Your actual production API URL
-  const productionURL = 'https://connectedautocare-backend-robs-projects-ec1694cd.vercel.app'
-  
-  // Check if we're in development
-  const isDevelopment = import.meta.env.DEV || window.location.hostname === 'localhost'
-  
-  // Use environment variable if available, otherwise use production URL
-  const apiURL = import.meta.env.VITE_API_URL || productionURL
-  
-  console.log('Environment:', isDevelopment ? 'development' : 'production')
-  console.log('API_BASE_URL:', apiURL)
-  
-  return apiURL
-}
+// API Base URL - Update this for production deployment
+const API_BASE_URL = process.env.NODE_ENV === 'production' 
+  ? 'http://localhost:5000'  // Update with your actual backend URL
+  : 'http://localhost:5000'
 
-const API_BASE_URL = getAPIBaseURL()
-
-// Enhanced API Client class with better error handling and CORS support
+// API Client class for making requests
 class APIClient {
   constructor(baseURL = API_BASE_URL) {
     this.baseURL = baseURL
-    this.defaultHeaders = {
-      'Content-Type': 'application/json',
-      'Accept': 'application/json',
-    }
   }
 
   async request(endpoint, options = {}) {
     const url = `${this.baseURL}${endpoint}`
-    
-    // Enhanced request configuration
     const config = {
-      method: 'GET',
       headers: {
-        ...this.defaultHeaders,
+        'Content-Type': 'application/json',
         ...options.headers,
       },
-      credentials: 'include', // Important for CORS with credentials
-      mode: 'cors', // Explicitly set CORS mode
       ...options,
     }
 
     try {
-      console.log(`Making ${config.method} request to: ${url}`)
-      
       const response = await fetch(url, config)
-      
-      // Log response status for debugging
-      console.log(`Response status: ${response.status}`)
-      
-      // Check if response is ok
+      const data = await response.json()
+
       if (!response.ok) {
-        // Try to parse error from response
-        let errorMessage = `HTTP error! status: ${response.status}`
-        
-        try {
-          const errorData = await response.json()
-          errorMessage = errorData.error || errorData.message || errorMessage
-        } catch {
-          // If parsing fails, use generic message
-          errorMessage = `Request failed with status ${response.status}`
-        }
-        
-        throw new Error(errorMessage)
+        throw new Error(data.error || `HTTP error! status: ${response.status}`)
       }
 
-      // Parse JSON response
-      const data = await response.json()
-      console.log('Response data:', data)
-      
       return data
     } catch (error) {
       console.error('API request failed:', error)
-      
-      // Enhanced error handling
-      if (error.name === 'TypeError' && error.message.includes('Failed to fetch')) {
-        throw new Error('Network error: Unable to connect to server. Please check your internet connection.')
-      }
-      
-      if (error.message.includes('CORS')) {
-        throw new Error('CORS error: Cross-origin request blocked. Please contact support.')
-      }
-      
       throw error
     }
   }
@@ -94,13 +41,11 @@ class APIClient {
     return this.request(endpoint, { method: 'GET', headers })
   }
 
-  // POST request with enhanced options
+  // POST request
   async post(endpoint, data = {}, headers = {}) {
     return this.request(endpoint, {
       method: 'POST',
-      headers: {
-        ...headers,
-      },
+      headers,
       body: JSON.stringify(data),
     })
   }
@@ -109,9 +54,7 @@ class APIClient {
   async put(endpoint, data = {}, headers = {}) {
     return this.request(endpoint, {
       method: 'PUT',
-      headers: {
-        ...headers,
-      },
+      headers,
       body: JSON.stringify(data),
     })
   }
@@ -119,11 +62,6 @@ class APIClient {
   // DELETE request
   async delete(endpoint, headers = {}) {
     return this.request(endpoint, { method: 'DELETE', headers })
-  }
-
-  // Options request for CORS preflight testing
-  async options(endpoint, headers = {}) {
-    return this.request(endpoint, { method: 'OPTIONS', headers })
   }
 }
 
@@ -134,8 +72,6 @@ const api = new APIClient()
 export const healthAPI = {
   checkHealth: () => api.get('/health'),
   checkAPIHealth: () => api.get('/api/health'),
-  testCORS: () => api.options('/api/health'), // Test CORS preflight
-  debugCORS: () => api.get('/api/debug/cors'), // Debug CORS configuration
 }
 
 // Hero Products APIs
@@ -170,32 +106,6 @@ export const contractAPI = {
   generateContract: (contractData) => api.post('/api/contracts/generate', contractData),
 }
 
-// Connection test utility
-export const testConnection = async () => {
-  try {
-    console.log('Testing connection to backend...')
-    const response = await healthAPI.checkHealth()
-    console.log('Connection successful:', response)
-    return { success: true, data: response }
-  } catch (error) {
-    console.error('Connection failed:', error)
-    return { success: false, error: error.message }
-  }
-}
-
-// CORS test utility
-export const testCORS = async () => {
-  try {
-    console.log('Testing CORS configuration...')
-    await healthAPI.testCORS()
-    console.log('CORS test successful')
-    return { success: true }
-  } catch (error) {
-    console.error('CORS test failed:', error)
-    return { success: false, error: error.message }
-  }
-}
-
 // Utility functions for data formatting
 export const formatCurrency = (amount) => {
   return new Intl.NumberFormat('en-US', {
@@ -212,7 +122,7 @@ export const formatDate = (dateString) => {
   }).format(new Date(dateString))
 }
 
-// Enhanced quote data validation
+// Quote data validation
 export const validateQuoteData = (data, type) => {
   const errors = []
 
@@ -239,21 +149,14 @@ export const validateQuoteData = (data, type) => {
   return errors
 }
 
-// Enhanced error handling utility
+// Error handling utility
 export const handleAPIError = (error) => {
   console.error('API Error:', error)
   
-  // Network errors
-  if (error.message.includes('Network error') || error.message.includes('Failed to fetch')) {
-    return 'Unable to connect to server. Please check your internet connection and try again.'
+  if (error.message.includes('Failed to fetch')) {
+    return 'Unable to connect to server. Please check your internet connection.'
   }
   
-  // CORS errors
-  if (error.message.includes('CORS')) {
-    return 'Cross-origin request blocked. Please contact support if this issue persists.'
-  }
-  
-  // HTTP status errors
   if (error.message.includes('404')) {
     return 'Service not found. Please try again later.'
   }
@@ -262,29 +165,9 @@ export const handleAPIError = (error) => {
     return 'Server error. Please try again later.'
   }
   
-  if (error.message.includes('503')) {
-    return 'Service temporarily unavailable. Please try again in a few moments.'
-  }
-  
-  // Validation errors
-  if (error.message.includes('validation')) {
-    return `Validation error: ${error.message}`
-  }
-  
-  // Default error message
   return error.message || 'An unexpected error occurred. Please try again.'
-}
-
-// Debug information
-export const getDebugInfo = () => {
-  return {
-    apiBaseURL: API_BASE_URL,
-    environment: import.meta.env.DEV ? 'development' : 'production',
-    currentOrigin: window.location.origin,
-    userAgent: navigator.userAgent,
-    timestamp: new Date().toISOString()
-  }
 }
 
 // Default export
 export default api
+
