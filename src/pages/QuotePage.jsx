@@ -352,28 +352,28 @@ const QuotePage = () => {
                   <CardContent className="space-y-6">
                     <div className="text-center space-y-2">
                       <div className="text-3xl font-bold price-highlight">
-                        {formatCurrency(quote.total_price)}
+                        {formatCurrency(quote.pricing?.total_price || quote.total_price)}
                       </div>
                       <Badge variant="secondary">
-                        {quote.customer_type === 'wholesale' ? 'Wholesale Price' : 'Retail Price'}
+                        {quote.product_info?.customer_type === 'wholesale' ? 'Wholesale Price' : 'Retail Price'}
                       </Badge>
                     </div>
 
                     <div className="space-y-3">
                       <div className="flex justify-between">
                         <span>Base Price:</span>
-                        <span>{formatCurrency(quote.base_price)}</span>
+                        <span>{formatCurrency(quote.pricing?.base_price || quote.base_price)}</span>
                       </div>
-                      {quote.admin_fee && (
+                      {quote.pricing?.admin_fee && (
                         <div className="flex justify-between">
                           <span>Admin Fee:</span>
-                          <span>{formatCurrency(quote.admin_fee)}</span>
+                          <span>{formatCurrency(quote.pricing.admin_fee)}</span>
                         </div>
                       )}
-                      {quote.tax && (
+                      {quote.pricing?.tax_amount && (
                         <div className="flex justify-between">
                           <span>Tax:</span>
-                          <span>{formatCurrency(quote.tax)}</span>
+                          <span>{formatCurrency(quote.pricing.tax_amount)}</span>
                         </div>
                       )}
                       {quote.discount && (
@@ -384,16 +384,16 @@ const QuotePage = () => {
                       )}
                       <div className="border-t pt-3 flex justify-between font-bold">
                         <span>Total:</span>
-                        <span>{formatCurrency(quote.total_price)}</span>
+                        <span>{formatCurrency(quote.pricing?.total_price || quote.total_price)}</span>
                       </div>
                     </div>
 
-                    {quote.monthly_payment && (
+                    {(quote.pricing?.monthly_payment || quote.monthly_payment) && (
                       <div className="bg-primary/5 p-4 rounded-lg">
                         <div className="text-center">
                           <div className="text-sm text-muted-foreground">Monthly Payment</div>
                           <div className="text-2xl font-bold text-primary">
-                            {formatCurrency(quote.monthly_payment)}
+                            {formatCurrency(quote.pricing?.monthly_payment || quote.monthly_payment)}
                           </div>
                         </div>
                       </div>
