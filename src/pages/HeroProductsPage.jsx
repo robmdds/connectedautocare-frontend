@@ -16,9 +16,6 @@ const HeroProductsPage = () => {
     const fetchProducts = async () => {
       try {
         const response = await heroAPI.getAllProducts()
-        console.log('Fetched products:', response)
-        
-        // Handle the response format: [responseObject, statusCode]
         const responseData = Array.isArray(response) ? response[0] : response
         
         const allProducts = []
@@ -49,8 +46,6 @@ const HeroProductsPage = () => {
             }
           })
         }
-        
-        console.log('Transformed products:', allProducts)
         setProducts(allProducts)
       } catch (error) {
         console.error('Failed to fetch products:', error)
