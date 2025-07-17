@@ -74,22 +74,17 @@ const QuotePage = () => {
         customer_type: heroForm.customer_type
       }
 
-      console.log('Sending hero quote request:', quoteData) // Debug log
-
       const response = await heroAPI.generateQuote(quoteData)
-      console.log('Raw hero quote response:', response) // Debug log
 
       // Handle the array response format: [responseObject, statusCode]
       const responseData = Array.isArray(response) ? response[0] : response
-      console.log('Processed hero quote response:', responseData) // Debug log
-
       if (responseData.success && responseData.data) {
         setQuote(responseData.data)
       } else {
         setError(responseData.error || 'Quote generation failed')
       }
     } catch (err) {
-      console.error('Hero quote error:', err) // Debug log
+      console.error('Hero quote error:', err)
       setError(handleAPIError(err))
     } finally {
       setLoading(false)
@@ -121,14 +116,10 @@ const QuotePage = () => {
         customer_type: vscForm.customer_type
       }
 
-      console.log('Sending VSC quote request:', quoteData) // Debug log
-
       const response = await vscAPI.generateQuote(quoteData)
-      console.log('Raw VSC quote response:', response) // Debug log
 
       // Handle the array response format: [responseObject, statusCode]
       const responseData = Array.isArray(response) ? response[0] : response
-      console.log('Processed VSC quote response:', responseData) // Debug log
 
       if (responseData.success && responseData.data) {
         setQuote(responseData.data)
@@ -136,7 +127,7 @@ const QuotePage = () => {
         setError(responseData.error || 'Quote generation failed')
       }
     } catch (err) {
-      console.error('VSC quote error:', err) // Debug log
+      console.error('VSC quote error:', err)
       setError(handleAPIError(err))
     } finally {
       setLoading(false)
