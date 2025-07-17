@@ -60,7 +60,10 @@ class APIClient {
   async post(endpoint, data = {}, headers = {}) {
     return this.request(endpoint, {
       method: 'POST',
-      headers,
+      headers: {
+        'Content-Type': 'application/json',
+        ...headers
+      },
       body: JSON.stringify(data),
     })
   }
@@ -69,7 +72,10 @@ class APIClient {
   async put(endpoint, data = {}, headers = {}) {
     return this.request(endpoint, {
       method: 'PUT',
-      headers,
+      headers: {
+        'Content-Type': 'application/json',
+        ...headers
+      },
       body: JSON.stringify(data),
     })
   }
