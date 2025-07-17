@@ -26,15 +26,8 @@ class APIClient {
       ...options,
     }
 
-    console.log(`Making API request to: ${url}`, config)
-
     try {
-      const response = await fetch(url, config)
-      
-      console.log('Response status:', response.status)
-      console.log('Response headers:', Object.fromEntries(response.headers.entries()))
-      
-      // Check if response is HTML (indicating an error page or CORS issue)
+      const response = await fetch(url, config)      
       const contentType = response.headers.get('content-type')
       if (contentType && contentType.includes('text/html')) {
         const htmlText = await response.text()
@@ -51,8 +44,6 @@ class APIClient {
         console.error('Raw response:', responseText.substring(0, 500))
         throw new Error('Invalid JSON response from server')
       }
-
-      console.log('Response data:', data)
 
       if (!response.ok) {
         throw new Error(data.error || `HTTP error! status: ${response.status}`)
@@ -164,10 +155,8 @@ export const heroAPI = {
   getAllProducts: () => api.get('/api/hero/products'),
   getProductsByCategory: (category) => api.get(`/api/hero/products/${category}`),
   generateQuote: async (quoteData) => {
-    console.log('HeroAPI.generateQuote called with:', quoteData)
     try {
       const response = await api.post('/api/hero/quote', quoteData)
-      console.log('HeroAPI.generateQuote response:', response)
       return response
     } catch (error) {
       console.error('HeroAPI.generateQuote error:', error)
@@ -181,10 +170,8 @@ export const vscAPI = {
   checkHealth: () => api.get('/api/vsc/health'),
   getCoverageOptions: () => api.get('/api/vsc/coverage-options'),
   generateQuote: async (quoteData) => {
-    console.log('VSCAPI.generateQuote called with:', quoteData)
     try {
       const response = await api.post('/api/vsc/quote', quoteData)
-      console.log('VSCAPI.generateQuote response:', response)
       return response
     } catch (error) {
       console.error('VSCAPI.generateQuote error:', error)
@@ -298,16 +285,6 @@ export const validateQuoteData = (data, type) => {
   }
 
   return errors
-}
-
-// Debug function to help troubleshoot CORS issues
-export const debugCORS = () => {
-  console.log('=== CORS Debug Info ===')
-  console.log('Current origin:', window.location.origin)
-  console.log('API Base URL:', API_BASE_URL)
-  console.log('Environment:', process.env.NODE_ENV)
-  console.log('User Agent:', navigator.userAgent)
-  console.log('========================')
 }
 
 export default api
