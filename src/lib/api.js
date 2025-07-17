@@ -2,7 +2,7 @@
 
 // API Base URL - Update this for production deployment
 const API_BASE_URL = process.env.NODE_ENV === 'production' 
-  ? 'http://localhost:5000'  // Update with your actual backend URL
+  ? 'https://connectedautocare-backend-2sw12dvma-robs-projects-ec1694cd.vercel.app'  // Update with your actual backend URL
   : 'http://localhost:5000'
 
 // API Client class for making requests
