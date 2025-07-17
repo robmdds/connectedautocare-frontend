@@ -52,6 +52,7 @@ const QuotePage = () => {
     'Volkswagen', 'Volvo', 'Acura', 'Infiniti'
   ]
 
+
   const handleHeroSubmit = async (e) => {
     e.preventDefault()
     setLoading(true)
@@ -65,15 +66,37 @@ const QuotePage = () => {
         return
       }
 
-      const response = await heroAPI.generateQuote(heroForm)
-      setQuote(response.data)
+      // Ensure proper data types before sending
+      const quoteData = {
+        product_type: heroForm.product_type,
+        term_years: parseInt(heroForm.term_years), // Convert to number
+        coverage_limit: parseInt(heroForm.coverage_limit), // Convert to number
+        customer_type: heroForm.customer_type
+      }
+
+      console.log('Sending hero quote request:', quoteData) // Debug log
+
+      const response = await heroAPI.generateQuote(quoteData)
+      console.log('Raw hero quote response:', response) // Debug log
+
+      // Handle the array response format: [responseObject, statusCode]
+      const responseData = Array.isArray(response) ? response[0] : response
+      console.log('Processed hero quote response:', responseData) // Debug log
+
+      if (responseData.success && responseData.data) {
+        setQuote(responseData.data)
+      } else {
+        setError(responseData.error || 'Quote generation failed')
+      }
     } catch (err) {
+      console.error('Hero quote error:', err) // Debug log
       setError(handleAPIError(err))
     } finally {
       setLoading(false)
     }
   }
 
+  // Replace your handleVSCSubmit function with this:
   const handleVSCSubmit = async (e) => {
     e.preventDefault()
     setLoading(true)
@@ -87,9 +110,33 @@ const QuotePage = () => {
         return
       }
 
-      const response = await vscAPI.generateQuote(vscForm)
-      setQuote(response.data)
+      // Ensure proper data types before sending
+      const quoteData = {
+        make: vscForm.make,
+        model: vscForm.model,
+        year: parseInt(vscForm.year), // Convert to number
+        mileage: parseInt(vscForm.mileage), // Convert to number
+        coverage_level: vscForm.coverage_level,
+        term_months: parseInt(vscForm.term_months), // Convert to number
+        customer_type: vscForm.customer_type
+      }
+
+      console.log('Sending VSC quote request:', quoteData) // Debug log
+
+      const response = await vscAPI.generateQuote(quoteData)
+      console.log('Raw VSC quote response:', response) // Debug log
+
+      // Handle the array response format: [responseObject, statusCode]
+      const responseData = Array.isArray(response) ? response[0] : response
+      console.log('Processed VSC quote response:', responseData) // Debug log
+
+      if (responseData.success && responseData.data) {
+        setQuote(responseData.data)
+      } else {
+        setError(responseData.error || 'Quote generation failed')
+      }
     } catch (err) {
+      console.error('VSC quote error:', err) // Debug log
       setError(handleAPIError(err))
     } finally {
       setLoading(false)

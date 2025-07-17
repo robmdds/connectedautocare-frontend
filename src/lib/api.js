@@ -177,14 +177,25 @@ export const formatDate = (dateString) => {
   }).format(new Date(dateString))
 }
 
+// Update your validateQuoteData function in api.js:
 export const validateQuoteData = (data, type) => {
   const errors = []
 
   if (type === 'hero') {
     if (!data.product_type) errors.push('Product type is required')
     if (!data.term_years) errors.push('Term is required')
-    if (data.term_years && (data.term_years < 1 || data.term_years > 5)) {
+    if (!data.coverage_limit) errors.push('Coverage limit is required')
+    
+    // Validate term_years range
+    const termYears = parseInt(data.term_years)
+    if (termYears && (termYears < 1 || termYears > 5)) {
       errors.push('Term must be between 1 and 5 years')
+    }
+    
+    // Validate coverage_limit
+    const coverageLimit = parseInt(data.coverage_limit)
+    if (data.coverage_limit !== 'unlimited' && coverageLimit && coverageLimit < 100) {
+      errors.push('Coverage limit must be at least $100')
     }
   }
 
@@ -192,10 +203,16 @@ export const validateQuoteData = (data, type) => {
     if (!data.make) errors.push('Vehicle make is required')
     if (!data.year) errors.push('Vehicle year is required')
     if (!data.mileage) errors.push('Vehicle mileage is required')
-    if (data.year && (data.year < 1990 || data.year > new Date().getFullYear() + 1)) {
+    if (!data.coverage_level) errors.push('Coverage level is required')
+    if (!data.term_months) errors.push('Term is required')
+    
+    const year = parseInt(data.year)
+    const mileage = parseInt(data.mileage)
+    
+    if (year && (year < 1990 || year > new Date().getFullYear() + 1)) {
       errors.push('Invalid vehicle year')
     }
-    if (data.mileage && (data.mileage < 0 || data.mileage > 500000)) {
+    if (mileage && (mileage < 0 || mileage > 500000)) {
       errors.push('Invalid mileage')
     }
   }
