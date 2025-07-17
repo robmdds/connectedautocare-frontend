@@ -16,46 +16,34 @@ const HeroProductsPage = () => {
     const fetchProducts = async () => {
       try {
         const response = await heroAPI.getAllProducts()
+        console.log('Fetched products:', response)
+        
+        // Handle the response format: [responseObject, statusCode]
+        const responseData = Array.isArray(response) ? response[0] : response
+        
         const allProducts = []
         
-        if (response && response.data) {
+        if (responseData && responseData.data) {
           // Iterate through each category
-          Object.entries(response.data).forEach(([categoryKey, categoryData]) => {
-            if (categoryData && Array.isArray(categoryData)) {
-              categoryData.forEach(product => {
+          Object.entries(responseData.data).forEach(([categoryKey, categoryInfo]) => {
+            if (categoryInfo && categoryInfo.products && Array.isArray(categoryInfo.products)) {
+              // Add each product with category information
+              categoryInfo.products.forEach(product => {
                 allProducts.push({
                   ...product,
                   category: categoryKey,
-                  id: product.id || product.product_code || `${categoryKey}-${Math.random()}`,
-                  name: product.name || product.product_name,
-                  description: product.description || product.detailed_description,
+                  category_name: categoryInfo.category_name,
+                  category_description: categoryInfo.category_description,
+                  id: product.product_code,
+                  name: product.product_name,
+                  description: product.detailed_description,
                   short_description: product.short_description,
-                  min_price: product.price || product.min_price || product.base_price,
-                  max_price: product.price || product.max_price || product.base_price,
-                  terms: product.term_options || product.terms_available || [1, 2, 3],
+                  min_price: product.price_range?.min_price || product.base_price,
+                  max_price: product.price_range?.max_price || product.base_price,
+                  terms: product.terms_available || [1, 2, 3],
                   features: product.features || [],
                   coverage_limits: product.coverage_limits || [],
-                  base_price: product.price || product.base_price
-                })
-              })
-            } else if (categoryData && categoryData.products) {
-              // If categoryData has a products array
-              categoryData.products.forEach(product => {
-                allProducts.push({
-                  ...product,
-                  category: categoryKey,
-                  category_name: categoryData.category_name,
-                  category_description: categoryData.category_description,
-                  id: product.product_code || product.id || `${categoryKey}-${Math.random()}`,
-                  name: product.product_name || product.name,
-                  description: product.detailed_description || product.description,
-                  short_description: product.short_description,
-                  min_price: product.price_range?.min_price || product.base_price || product.price,
-                  max_price: product.price_range?.max_price || product.base_price || product.price,
-                  terms: product.terms_available || product.term_options || [1, 2, 3],
-                  features: product.features || [],
-                  coverage_limits: product.coverage_limits || [],
-                  base_price: product.base_price || product.price
+                  base_price: product.base_price
                 })
               })
             }
