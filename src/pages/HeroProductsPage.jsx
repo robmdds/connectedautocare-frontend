@@ -16,6 +16,7 @@ const HeroProductsPage = () => {
     const fetchProducts = async () => {
       try {
         const response = await heroAPI.getAllProducts()
+        console.log('Fetched products:', response)
         const allProducts = []
         
         if (responseData && responseData.data) {

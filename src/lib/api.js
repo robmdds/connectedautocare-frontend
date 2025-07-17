@@ -24,7 +24,6 @@ class APIClient {
     }
 
     try {
-      console.log(`Making ${config.method || 'GET'} request to: ${url}`) // Debug log
       const response = await fetch(url, config)
       
       // Check if response is HTML (indicating an error page)
@@ -81,17 +80,15 @@ class APIClient {
   }
 }
 
-// Test connection function with better error reporting
+// Test connection function
 export const testConnection = async () => {
   const api = new APIClient()
   try {
-    console.log('Testing connection to:', API_BASE_URL)
     const response = await api.get('/health')
     console.log('Backend connection successful:', response)
     return true
   } catch (error) {
     console.error('Backend connection failed:', error)
-    console.error('Backend URL being used:', API_BASE_URL)
     return false
   }
 }
