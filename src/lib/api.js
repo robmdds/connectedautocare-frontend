@@ -2,7 +2,7 @@
 
 // API Base URL - Update this for production deployment
 const API_BASE_URL = process.env.NODE_ENV === 'production' 
-  ? 'https://connectedautocare-backend-robs-projects-ec1694cd.vercel.app'  // Update with your actual backend URL
+  ? 'https://connectedautocare-backend-robs-projects-ec1694cd.vercel.app'
   : 'http://localhost:5000'
 
 // API Client class for making requests
@@ -18,11 +18,20 @@ class APIClient {
         'Content-Type': 'application/json',
         ...options.headers,
       },
+      mode: 'cors',  // Explicitly set CORS mode
+      credentials: 'omit',  // Don't send credentials
       ...options,
     }
 
     try {
       const response = await fetch(url, config)
+      
+      // Check if response is HTML (indicating an error page)
+      const contentType = response.headers.get('content-type')
+      if (contentType && contentType.includes('text/html')) {
+        throw new Error('Server returned HTML instead of JSON. Check backend deployment.')
+      }
+      
       const data = await response.json()
 
       if (!response.ok) {
@@ -32,6 +41,12 @@ class APIClient {
       return data
     } catch (error) {
       console.error('API request failed:', error)
+      
+      // Better error handling for CORS and network issues
+      if (error.name === 'TypeError' && error.message.includes('Failed to fetch')) {
+        throw new Error('Network error: Unable to connect to server. Please check if the backend is running.')
+      }
+      
       throw error
     }
   }
@@ -65,7 +80,20 @@ class APIClient {
   }
 }
 
-// Create API client instance
+// Test connection function
+export const testConnection = async () => {
+  const api = new APIClient()
+  try {
+    const response = await api.get('/health')
+    console.log('Backend connection successful:', response)
+    return true
+  } catch (error) {
+    console.error('Backend connection failed:', error)
+    return false
+  }
+}
+
+// Rest of your existing code remains the same...
 const api = new APIClient()
 
 // Health Check APIs
@@ -106,7 +134,34 @@ export const contractAPI = {
   generateContract: (contractData) => api.post('/api/contracts/generate', contractData),
 }
 
-// Utility functions for data formatting
+// Enhanced error handling utility
+export const handleAPIError = (error) => {
+  console.error('API Error:', error)
+  
+  if (error.message.includes('Failed to fetch') || error.message.includes('Network error')) {
+    return 'Unable to connect to server. Please check your internet connection and try again.'
+  }
+  
+  if (error.message.includes('HTML instead of JSON')) {
+    return 'Server configuration error. Please contact support.'
+  }
+  
+  if (error.message.includes('404')) {
+    return 'Service not found. Please try again later.'
+  }
+  
+  if (error.message.includes('401')) {
+    return 'Authentication required. Please check server configuration.'
+  }
+  
+  if (error.message.includes('500')) {
+    return 'Server error. Please try again later.'
+  }
+  
+  return error.message || 'An unexpected error occurred. Please try again.'
+}
+
+// Utility functions (keep existing ones)
 export const formatCurrency = (amount) => {
   return new Intl.NumberFormat('en-US', {
     style: 'currency',
@@ -122,7 +177,6 @@ export const formatDate = (dateString) => {
   }).format(new Date(dateString))
 }
 
-// Quote data validation
 export const validateQuoteData = (data, type) => {
   const errors = []
 
@@ -149,25 +203,4 @@ export const validateQuoteData = (data, type) => {
   return errors
 }
 
-// Error handling utility
-export const handleAPIError = (error) => {
-  console.error('API Error:', error)
-  
-  if (error.message.includes('Failed to fetch')) {
-    return 'Unable to connect to server. Please check your internet connection.'
-  }
-  
-  if (error.message.includes('404')) {
-    return 'Service not found. Please try again later.'
-  }
-  
-  if (error.message.includes('500')) {
-    return 'Server error. Please try again later.'
-  }
-  
-  return error.message || 'An unexpected error occurred. Please try again.'
-}
-
-// Default export
 export default api
-
