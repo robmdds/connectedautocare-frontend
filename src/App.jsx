@@ -10,7 +10,7 @@ import HeroProductsPage from './pages/HeroProductsPage'
 import VSCPage from './pages/VSCPage'
 import QuotePage from './pages/QuotePage'
 import AboutPage from './pages/AboutPage'
-import ContactPage from './pages/ContactPage'
+// import ContactPage from './pages/ContactPage'
 
 function App() {
   return (
@@ -24,7 +24,8 @@ function App() {
             <Route path="/vsc" element={<VSCPage />} />
             <Route path="/quote" element={<QuotePage />} />
             <Route path="/about" element={<AboutPage />} />
-            <Route path="/contact" element={<ContactPage />} />
+            {/* <Route path="/contact" element={<ContactPage />} /> */}
+            {/* Uncomment when ContactPage is ready */}
           </Routes>
         </main>
         <Footer />
