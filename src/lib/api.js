@@ -2,7 +2,7 @@
 
 // API Base URL - Update this for production deployment
 const API_BASE_URL = process.env.NODE_ENV === 'production' 
-  ? 'process.env.VITE_API_URL'
+  ? 'https://api.connectedautocare.com'
   : 'http://localhost:5000'
 
 // API Client class for making requests
