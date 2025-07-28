@@ -69,6 +69,8 @@ export default function VideoManagement() {
 
       if (response.ok) {
         const data = await response.json();
+        console.log('Service health:', data);
+        console.log('Service health data.data:', data.data);
         setServiceHealth(data.data || data);
       }
     } catch (error) {
