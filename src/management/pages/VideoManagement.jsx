@@ -69,9 +69,16 @@ export default function VideoManagement() {
 
       if (response.ok) {
         const data = await response.json();
-        console.log('Service health:', data);
-        console.log('Service health data.data:', data.data);
-        setServiceHealth(data.data || data);
+        
+        // Handle array response format
+        let healthData;
+        if (Array.isArray(data)) {
+          // If it's an array, take the first element
+          healthData = data[0];
+        } else {
+          healthData = data;
+        }
+        setServiceHealth(healthData.data || healthData);
       }
     } catch (error) {
       console.error('Failed to check service health:', error);
