@@ -12,20 +12,20 @@ const HeroProductsPage = () => {
   const [loading, setLoading] = useState(true)
   const [selectedCategory, setSelectedCategory] = useState('all')
 
-  // Add this helper function to generate product names from product_type
-  const generateProductNameFromType = (productType) => {
+  // Helper function to generate product names from product_code
+  const generateProductNameFromType = (productCode) => {
     const nameMap = {
-      'home_protection': 'Home Protection Plan',
-      'comprehensive_auto_protection': 'Comprehensive Auto Protection',
-      'home_deductible_reimbursement': 'Home Deductible Reimbursement',
-      'multi_vehicle_deductible_reimbursement': 'Multi Vehicle Deductible Reimbursement',
-      'auto_advantage_deductible_reimbursement': 'Auto Advantage Deductible Reimbursement',
-      'all_vehicle_deductible_reimbursement': 'All Vehicle Deductible Reimbursement',
-      'auto_rv_deductible_reimbursement': 'Auto & RV Deductible Reimbursement',
-      'hero_level_protection_home': 'Hero-Level Protection for Your Home'
+      'HOME_PROTECTION_PLAN': 'Home Protection Plan',
+      'COMPREHENSIVE_AUTO_PROTECTION': 'Comprehensive Auto Protection',
+      'HOME_DEDUCTIBLE_REIMBURSEMENT': 'Home Deductible Reimbursement',
+      'MULTI_VEHICLE_DEDUCTIBLE_REIMBURSEMENT': 'Multi Vehicle Deductible Reimbursement',
+      'AUTO_ADVANTAGE_DEDUCTIBLE_REIMBURSEMENT': 'Auto Advantage Deductible Reimbursement',
+      'ALL_VEHICLE_DEDUCTIBLE_REIMBURSEMENT': 'All Vehicle Deductible Reimbursement',
+      'AUTO_RV_DEDUCTIBLE_REIMBURSEMENT': 'Auto & RV Deductible Reimbursement',
+      'HERO_LEVEL_HOME_PROTECTION': 'Hero-Level Protection for Your Home'
     }
     
-    return nameMap[productType] || productType.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())
+    return nameMap[productCode] || productCode.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())
   }
 
   useEffect(() => {
@@ -46,25 +46,25 @@ const HeroProductsPage = () => {
           
           responseData.data.products.forEach((product, index) => {
             
-            // Updated validation - check for the fields that actually exist
-            if (!product.product_type || !product.base_price) {
+            // Validate required fields
+            if (!product.product_code || !product.base_price) {
               return
             }
             
-            // Generate product_code and product_name from product_type if missing
-            const productCode = product.product_code || product.product_type.toUpperCase()
-            const productName = product.product_name || generateProductNameFromType(product.product_type)
+            // Use product_code and product_name directly
+            const productCode = product.product_code
+            const productName = product.product_name || generateProductNameFromType(product.product_code)
             
-            // Determine category from product_type
+            // Determine category from product_code
             let category = 'deductible_reimbursement'
             let categoryName = 'Deductible Reimbursement'
             
-            const productType = product.product_type || ''
+            const productCodeLower = product.product_code.toLowerCase()
             
-            if (productType.includes('home_protection') || productType.includes('hero_level_protection_home')) {
+            if (productCodeLower.includes('home_protection') || productCodeLower.includes('hero_level_protection_home')) {
               category = 'home_protection'
               categoryName = 'Home Protection'
-            } else if (productType.includes('comprehensive_auto_protection')) {
+            } else if (productCodeLower.includes('auto_protection')) {
               category = 'auto_protection'  
               categoryName = 'Auto Protection'
             }

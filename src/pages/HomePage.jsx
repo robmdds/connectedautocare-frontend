@@ -54,9 +54,7 @@ const HomePage = () => {
       const endpoint = `${API_BASE_URL}/api/landing/video`;
       try {
         const response = await fetch(endpoint);
-        const [result] = await response.json(); // Destructure the first element of the array
-        console.log('Video data:', result);
-        console.log('Response:', response);
+        const [result] = await response.json();
 
         if (result.success) {
           setVideoData({
