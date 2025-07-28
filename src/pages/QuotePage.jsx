@@ -128,7 +128,6 @@ const QuotePage = () => {
         setVscForm(prev => ({
           ...prev,
           make: '',
-          model: '',
           year: '',
           auto_populated: false
         }))
@@ -139,7 +138,6 @@ const QuotePage = () => {
       setVscForm(prev => ({
         ...prev,
         make: '',
-        model: '',
         year: '',
         auto_populated: false
       }))
@@ -202,7 +200,6 @@ const QuotePage = () => {
       setVscForm(prev => ({
         ...prev,
         make: '',
-        model: '',
         year: '',
         auto_populated: false
       }))
@@ -504,14 +501,12 @@ const QuotePage = () => {
                         <div className="space-y-2">
                           <Label htmlFor="vsc-model">
                             Vehicle Model
-                            {vscForm.auto_populated && <Badge variant="secondary" className="ml-2 text-xs">Auto-filled</Badge>}
                           </Label>
                           <Input
                             id="vsc-model"
                             placeholder="Enter model"
                             value={vscForm.model}
                             onChange={(e) => setVscForm({...vscForm, model: e.target.value})}
-                            className={vscForm.auto_populated ? 'bg-green-50 border-green-300' : ''}
                           />
                         </div>
 
