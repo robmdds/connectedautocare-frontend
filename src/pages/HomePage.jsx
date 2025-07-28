@@ -53,36 +53,36 @@ const HomePage = () => {
       const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
       const endpoint = `${API_BASE_URL}/api/landing/video`;
       try {
-        const response = await fetch(endpoint)
-        const data = await response.json()
-        console.log('Video data:', data)
-        console.log('Response:', response)
-        
-        if (data.success) {
+        const response = await fetch(endpoint);
+        const [result] = await response.json(); // Destructure the first element of the array
+        console.log('Video data:', result);
+        console.log('Response:', response);
+
+        if (result.success) {
           setVideoData({
-            ...data.data,
+            ...result.data,
             loading: false,
             error: null
-          })
+          });
         } else {
           setVideoData(prev => ({
             ...prev,
             loading: false,
             error: 'Failed to load video'
-          }))
+          }));
         }
       } catch (error) {
-        console.error('Error fetching video:', error)
+        console.error('Error fetching video:', error);
         setVideoData(prev => ({
           ...prev,
           loading: false,
           error: 'Video service unavailable'
-        }))
+        }));
       }
-    }
+    };
 
-    fetchVideoData()
-  }, [])
+    fetchVideoData();
+  }, []);
 
   // Animate stats on load
   useEffect(() => {
