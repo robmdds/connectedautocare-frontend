@@ -81,7 +81,6 @@ const QuotePage = () => {
     setEligibilityCheck(null)
 
     try {
-      // Call VIN decoder API
       const response = await fetch('/api/vin/decode', {
         method: 'POST',
         headers: {
@@ -91,28 +90,26 @@ const QuotePage = () => {
       })
 
       const rawResult = await response.json()
-      
-      // Handle array response format: [responseData, statusCode]
       const result = Array.isArray(rawResult) ? rawResult[0] : rawResult
-      
-      console.log('VIN decode result:', result) // Debug log
 
       if (result.success && result.data) {
         const vehicleInfo = result.data.vehicle_info || result.data
         const eligibilityInfo = result.data.eligibility
-        
+
         setVinInfo(vehicleInfo)
+
+        // Normalize and match the decoded make to known makes
+        const decodedMake = (vehicleInfo.make || '').toLowerCase()
+        const matchedMake = vehicleMakes.find(make => make.toLowerCase() === decodedMake) || vehicleInfo.make || ''
 
         // Auto-populate form fields
         setVscForm(prev => ({
           ...prev,
-          make: vehicleInfo.make || '',
-          model: vehicleInfo.model || '',
+          make: matchedMake,
           year: vehicleInfo.year ? vehicleInfo.year.toString() : '',
           auto_populated: true
         }))
 
-        // Use backend eligibility if available, otherwise check locally
         if (eligibilityInfo) {
           setEligibilityCheck({
             eligible: eligibilityInfo.eligible,
@@ -128,7 +125,6 @@ const QuotePage = () => {
         setVinError('')
       } else {
         setVinError(result.error || 'Failed to decode VIN')
-        // Reset auto-populated fields on error
         setVscForm(prev => ({
           ...prev,
           make: '',
@@ -472,7 +468,6 @@ const QuotePage = () => {
                               </div>
                               <div className="text-sm space-y-1">
                                 <p><strong>Make:</strong> {vinInfo.make}</p>
-                                <p><strong>Model:</strong> {vinInfo.model}</p>
                                 <p><strong>Year:</strong> {vinInfo.year}</p>
                                 {vinInfo.trim && <p><strong>Trim:</strong> {vinInfo.trim}</p>}
                                 {vinInfo.engine && <p><strong>Engine:</strong> {vinInfo.engine}</p>}
