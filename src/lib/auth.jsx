@@ -16,6 +16,7 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
 
+  // Use consistent API base URL
   const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
   useEffect(() => {
@@ -38,9 +39,11 @@ export const AuthProvider = ({ children }) => {
 
       if (response.ok) {
         const data = await response.json();
-        setUser(data.user || data.data);
+        const userData = data.user || data.data || data;
+        setUser(userData);
         setIsAuthenticated(true);
       } else {
+        console.log('Token verification failed, logging out');
         logout();
       }
     } catch (error) {
@@ -53,9 +56,11 @@ export const AuthProvider = ({ children }) => {
 
   const login = async (usernameOrEmail, password) => {
     try {
-      // Always use /api/auth/login, as demo credentials use email for all roles
+      setLoading(true);
       const endpoint = '/api/auth/login';
       const body = { email: usernameOrEmail, password };
+
+      console.log('Attempting login to:', `${API_BASE_URL}${endpoint}`);
 
       const response = await fetch(`${API_BASE_URL}${endpoint}`, {
         method: 'POST',
@@ -66,25 +71,34 @@ export const AuthProvider = ({ children }) => {
       });
 
       const data = await response.json();
+      console.log('Login response:', data);
 
-      if (response.ok && (data.token || data.user)) {
-        const { token, user } = data;
-        setToken(token);
-        setUser(user || { email: user.email, role: user.role, id: user.id });
+      if (response.ok && data.token) {
+        const { token: authToken, user: userData } = data;
+        
+        // Store token and user data
+        setToken(authToken);
+        setUser(userData);
         setIsAuthenticated(true);
-        localStorage.setItem('token', token);
-        return { success: true, user: user || { email: user.email, role: user.role, id: user.id } };
+        localStorage.setItem('token', authToken);
+        
+        console.log('Login successful:', userData);
+        return { success: true, user: userData };
       } else {
-        return { success: false, error: data.error || 'Login failed: Invalid response format' };
+        console.error('Login failed:', data);
+        return { success: false, error: data.error || data.message || 'Login failed' };
       }
     } catch (error) {
-      console.error('Login failed:', error);
-      return { success: false, error: 'Network error. Please try again.' };
+      console.error('Login error:', error);
+      return { success: false, error: 'Network error. Please check your connection and try again.' };
+    } finally {
+      setLoading(false);
     }
   };
 
   const register = async (userData) => {
     try {
+      setLoading(true);
       const registrationData = {
         email: userData.email,
         password: userData.password,
@@ -95,15 +109,14 @@ export const AuthProvider = ({ children }) => {
         },
       };
 
+      // Add role-specific data
       if (userData.role === 'wholesale_reseller') {
         registrationData.business_name = userData.business_name;
         registrationData.license_number = userData.license_number;
         registrationData.license_state = userData.license_state;
         registrationData.phone = userData.phone;
       } else if (userData.role === 'customer') {
-        registrationData.first_name = userData.first_name;
-        registrationData.last_name = userData.last_name;
-        registrationData.phone = userData.phone;
+        registrationData.profile.phone = userData.phone;
       }
 
       const response = await fetch(`${API_BASE_URL}/api/auth/register`, {
@@ -116,47 +129,52 @@ export const AuthProvider = ({ children }) => {
 
       const data = await response.json();
 
-      if (response.ok) {
-        setToken(data.token);
-        setUser(data.user || data.data);
+      if (response.ok && data.token) {
+        const { token: authToken, user: newUser } = data;
+        setToken(authToken);
+        setUser(newUser);
         setIsAuthenticated(true);
-        localStorage.setItem('token', data.token);
-        return { success: true, user: data.user || data.data };
+        localStorage.setItem('token', authToken);
+        return { success: true, user: newUser };
       } else {
-        return { success: false, error: data.error };
+        return { success: false, error: data.error || data.message || 'Registration failed' };
       }
     } catch (error) {
       console.error('Registration failed:', error);
       return { success: false, error: 'Network error. Please try again.' };
+    } finally {
+      setLoading(false);
     }
   };
 
   const logout = async () => {
     try {
       if (token) {
-        const isAdmin = user?.role === 'admin';
-        const endpoint = isAdmin ? '/api/admin/auth/logout' : '/api/auth/logout';
-        await fetch(`${API_BASE_URL}${endpoint}`, {
+        // Try to notify the server about logout
+        await fetch(`${API_BASE_URL}/api/auth/logout`, {
           method: 'POST',
           headers: {
             'Authorization': `Bearer ${token}`,
             'Content-Type': 'application/json',
           },
+        }).catch(error => {
+          // Don't fail logout if server request fails
+          console.warn('Logout server request failed:', error);
         });
       }
-    } catch (error) {
-      console.error('Logout error:', error);
     } finally {
+      // Always clear local state regardless of server response
       setToken(null);
       setUser(null);
       setIsAuthenticated(false);
       localStorage.removeItem('token');
+      setLoading(false);
     }
   };
 
   const changePassword = async (currentPassword, newPassword) => {
     try {
-      const endpoint = user?.role === 'admin' ? '/api/admin/auth/change-password' : '/api/auth/change-password';
+      const endpoint = '/api/auth/change-password';
       const response = await fetch(`${API_BASE_URL}${endpoint}`, {
         method: 'POST',
         headers: {
@@ -170,10 +188,15 @@ export const AuthProvider = ({ children }) => {
       });
 
       const data = await response.json();
-      return data;
+      
+      if (response.ok) {
+        return { success: true, message: data.message || 'Password changed successfully' };
+      } else {
+        return { success: false, error: data.error || 'Password change failed' };
+      }
     } catch (error) {
       console.error('Password change failed:', error);
-      return { success: false, error: 'Password change failed. Please try again.' };
+      return { success: false, error: 'Network error. Please try again.' };
     }
   };
 
@@ -247,10 +270,17 @@ export const apiCall = async (endpoint, options = {}) => {
 
   try {
     const response = await fetch(`${API_BASE_URL}${endpoint}`, mergedOptions);
+    
+    // Check if response is JSON
+    const contentType = response.headers.get('content-type');
+    if (!contentType || !contentType.includes('application/json')) {
+      throw new Error(`Server returned ${contentType} instead of JSON`);
+    }
+
     const data = await response.json();
 
     if (!response.ok) {
-      throw new Error(data.error || 'API request failed');
+      throw new Error(data.error || data.message || `HTTP ${response.status}: ${response.statusText}`);
     }
 
     return data;

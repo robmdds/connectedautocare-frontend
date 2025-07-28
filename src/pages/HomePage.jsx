@@ -12,7 +12,11 @@ import {
   Phone,
   Clock,
   Users,
-  Award
+  Award,
+  Play,
+  Pause,
+  Volume2,
+  VolumeX
 } from 'lucide-react'
 import { Button } from '../components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card'
@@ -26,6 +30,58 @@ const HomePage = () => {
     satisfaction: 0
   })
 
+  // Video state
+  const [videoData, setVideoData] = useState({
+    video_url: '',
+    thumbnail_url: '',
+    title: 'ConnectedAutoCare Hero Protection',
+    description: 'Comprehensive protection plans',
+    duration: '2:30',
+    loading: true,
+    error: null
+  })
+
+  const [videoControls, setVideoControls] = useState({
+    isPlaying: false,
+    isMuted: false,
+    showControls: false
+  })
+
+  // Fetch video data
+  useEffect(() => {
+    const fetchVideoData = async () => {
+      const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+      const endpoint = `${API_BASE_URL}/api/landing/video`;
+      try {
+        const response = await fetch(endpoint)
+        const data = await response.json()
+        
+        if (data.success) {
+          setVideoData({
+            ...data.data,
+            loading: false,
+            error: null
+          })
+        } else {
+          setVideoData(prev => ({
+            ...prev,
+            loading: false,
+            error: 'Failed to load video'
+          }))
+        }
+      } catch (error) {
+        console.error('Error fetching video:', error)
+        setVideoData(prev => ({
+          ...prev,
+          loading: false,
+          error: 'Video service unavailable'
+        }))
+      }
+    }
+
+    fetchVideoData()
+  }, [])
+
   // Animate stats on load
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -37,6 +93,31 @@ const HomePage = () => {
     }, 500)
     return () => clearTimeout(timer)
   }, [])
+
+  // Video control handlers
+  const togglePlay = () => {
+    const video = document.getElementById('hero-video')
+    if (video) {
+      if (videoControls.isPlaying) {
+        video.pause()
+      } else {
+        video.play()
+      }
+      setVideoControls(prev => ({ ...prev, isPlaying: !prev.isPlaying }))
+    }
+  }
+
+  const toggleMute = () => {
+    const video = document.getElementById('hero-video')
+    if (video) {
+      video.muted = !video.muted
+      setVideoControls(prev => ({ ...prev, isMuted: !prev.isMuted }))
+    }
+  }
+
+  const handleVideoEnd = () => {
+    setVideoControls(prev => ({ ...prev, isPlaying: false }))
+  }
 
   const features = [
     {
@@ -121,6 +202,141 @@ const HomePage = () => {
     }
   ]
 
+  // Hero Video Component
+  const HeroVideo = () => {
+    if (videoData.loading) {
+      return (
+        <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-8 border border-white/20">
+          <div className="aspect-video bg-white/20 rounded-lg flex items-center justify-center">
+            <div className="text-center space-y-4">
+              <div className="animate-spin h-8 w-8 border-2 border-white/30 border-t-white rounded-full mx-auto"></div>
+              <p className="text-white/80">Loading video...</p>
+            </div>
+          </div>
+        </div>
+      )
+    }
+
+    if (videoData.error || !videoData.video_url) {
+      return (
+        <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-8 border border-white/20">
+          <div className="aspect-video bg-white/20 rounded-lg flex items-center justify-center">
+            <div className="text-center space-y-4">
+              <Shield className="h-16 w-16 mx-auto text-white/80" />
+              <div>
+                <p className="text-white/80 font-medium">{videoData.title}</p>
+                <p className="text-sm text-white/60">{videoData.description}</p>
+                {videoData.error && (
+                  <p className="text-xs text-red-300 mt-2">{videoData.error}</p>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )
+    }
+
+    return (
+      <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-4 border border-white/20">
+        <div 
+          className="relative aspect-video bg-black rounded-lg overflow-hidden group cursor-pointer"
+          onMouseEnter={() => setVideoControls(prev => ({ ...prev, showControls: true }))}
+          onMouseLeave={() => setVideoControls(prev => ({ ...prev, showControls: false }))}
+        >
+          {/* Video Element */}
+          <video
+            id="hero-video"
+            className="w-full h-full object-cover"
+            poster={videoData.thumbnail_url}
+            muted={videoControls.isMuted}
+            onEnded={handleVideoEnd}
+            onPlay={() => setVideoControls(prev => ({ ...prev, isPlaying: true }))}
+            onPause={() => setVideoControls(prev => ({ ...prev, isPlaying: false }))}
+            playsInline
+          >
+            <source src={videoData.video_url} type="video/mp4" />
+            Your browser does not support the video tag.
+          </video>
+
+          {/* Video Overlay Controls */}
+          <div className={`absolute inset-0 bg-black/40 flex items-center justify-center transition-opacity duration-300 ${
+            videoControls.showControls || !videoControls.isPlaying ? 'opacity-100' : 'opacity-0'
+          }`}>
+            {/* Play/Pause Button */}
+            <Button
+              size="lg"
+              onClick={togglePlay}
+              className="bg-white/20 hover:bg-white/30 backdrop-blur-sm border border-white/30 text-white"
+            >
+              {videoControls.isPlaying ? (
+                <Pause className="h-8 w-8" />
+              ) : (
+                <Play className="h-8 w-8 ml-1" />
+              )}
+            </Button>
+          </div>
+
+          {/* Video Controls Bar */}
+          <div className={`absolute bottom-4 left-4 right-4 transition-opacity duration-300 ${
+            videoControls.showControls ? 'opacity-100' : 'opacity-0'
+          }`}>
+            <div className="bg-black/60 backdrop-blur-sm rounded-lg p-3 flex items-center justify-between">
+              <div className="flex items-center space-x-3">
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={togglePlay}
+                  className="text-white hover:bg-white/20 p-2"
+                >
+                  {videoControls.isPlaying ? (
+                    <Pause className="h-4 w-4" />
+                  ) : (
+                    <Play className="h-4 w-4" />
+                  )}
+                </Button>
+                
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={toggleMute}
+                  className="text-white hover:bg-white/20 p-2"
+                >
+                  {videoControls.isMuted ? (
+                    <VolumeX className="h-4 w-4" />
+                  ) : (
+                    <Volume2 className="h-4 w-4" />
+                  )}
+                </Button>
+                
+                <div className="text-white text-sm">
+                  {videoData.duration}
+                </div>
+              </div>
+
+              <div className="text-white text-sm font-medium">
+                {videoData.title}
+              </div>
+            </div>
+          </div>
+
+          {/* Video Title Overlay (when not playing) */}
+          {!videoControls.isPlaying && !videoControls.showControls && (
+            <div className="absolute bottom-4 left-4 right-4">
+              <div className="bg-black/60 backdrop-blur-sm rounded-lg p-4">
+                <h3 className="text-white font-semibold text-lg">{videoData.title}</h3>
+                <p className="text-white/80 text-sm">{videoData.description}</p>
+                <div className="flex items-center justify-between mt-2">
+                  <span className="text-white/60 text-xs">Duration: {videoData.duration}</span>
+                  <span className="text-white/60 text-xs">Click to play</span>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="min-h-screen">
       {/* Hero Section */}
@@ -187,16 +403,7 @@ const HomePage = () => {
               transition={{ duration: 0.8, delay: 0.2 }}
               className="relative"
             >
-              {/* Hero Image Placeholder - In production, add actual video/image */}
-              <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-8 border border-white/20">
-                <div className="aspect-video bg-white/20 rounded-lg flex items-center justify-center">
-                  <div className="text-center space-y-4">
-                    <Shield className="h-16 w-16 mx-auto text-white/80" />
-                    <p className="text-white/80">Professional Protection Video</p>
-                    <p className="text-sm text-white/60">Coming Soon</p>
-                  </div>
-                </div>
-              </div>
+              <HeroVideo />
             </motion.div>
           </div>
         </div>
@@ -388,4 +595,3 @@ const HomePage = () => {
 }
 
 export default HomePage
-

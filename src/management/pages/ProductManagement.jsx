@@ -46,8 +46,163 @@ export default function ProductManagement() {
     try {
       setLoading(true)
       const response = await apiCall('/api/admin/products')
-      setHeroProducts(response.data.hero_products || {})
-      setVscProducts(response.data.vsc_products || {})
+      
+      // Handle the array response format [responseObject, statusCode]
+      let actualResponse = response;
+      
+      if (Array.isArray(response) && response.length >= 1 && typeof response[0] === 'object') {
+        actualResponse = response[0];
+      }
+      
+      // Handle the success_response format
+      let responseData = actualResponse;
+      if (actualResponse && actualResponse.success && actualResponse.data) {
+        responseData = actualResponse.data;
+      }
+            
+      // Helper function to get correct pricing data based on July 2025 pricing document
+      const getCorrectPricingData = (productCode, basePrice) => {
+        const pricingMap = {
+          'HOME_PROTECTION_PLAN': { min: 199, max: 599, terms: [1, 2, 3, 4, 5] },
+          'COMPREHENSIVE_AUTO_PROTECTION': { min: 339, max: 1099, terms: [1, 2, 3, 4, 5] },
+          'HOME_DEDUCTIBLE_REIMBURSEMENT': { min: 160, max: 255, terms: [1, 2, 3] },
+          'MULTI_VEHICLE_DEDUCTIBLE_REIMBURSEMENT': { min: 150, max: 275, terms: [1, 2, 3] },
+          'AUTO_ADVANTAGE_DEDUCTIBLE_REIMBURSEMENT': { min: 120, max: 225, terms: [1, 2, 3] },
+          'ALL_VEHICLE_DEDUCTIBLE_REIMBURSEMENT': { min: 150, max: 275, terms: [1, 2, 3] },
+          'AUTO_RV_DEDUCTIBLE_REIMBURSEMENT': { min: 175, max: 280, terms: [1, 2, 3] },
+          'HERO_LEVEL_HOME_PROTECTION': { min: 789, max: 1295, terms: [1, 2, 3] }
+        }
+        
+        const pricing = pricingMap[productCode.toUpperCase()]
+        if (pricing) {
+          return {
+            minPrice: pricing.min,
+            maxPrice: pricing.max,
+            terms: pricing.terms,
+            pricing: pricing.terms.reduce((acc, term, index) => {
+              const termPrice = pricing.min + ((pricing.max - pricing.min) * (index / (pricing.terms.length - 1)))
+              acc[term] = { base_price: Math.round(termPrice), admin_fee: 25 }
+              return acc
+            }, {})
+          }
+        }
+        
+        // Fallback to base price if not found
+        return {
+          minPrice: basePrice,
+          maxPrice: basePrice,
+          terms: [1, 2, 3],
+          pricing: { '1': { base_price: basePrice, admin_fee: 25 } }
+        }
+      }
+
+      // Helper function to determine category from product_code
+      const getCategoryFromProductCode = (productCode) => {
+        const code = productCode.toUpperCase()
+        if (code.includes('HOME_PROTECTION') || code.includes('HERO_LEVEL_HOME')) {
+          return 'home_protection'
+        } else if (code.includes('COMPREHENSIVE_AUTO')) {
+          return 'auto_protection'
+        } else {
+          return 'deductible_reimbursement'
+        }
+      }
+
+      // Helper function to generate features based on product code
+      const generateFeatures = (productCode) => {
+        const code = productCode.toUpperCase()
+        const featureMap = {
+          'HOME_PROTECTION_PLAN': ['HVAC coverage', 'Plumbing protection', '24/7 support', 'Glass repair', 'Emergency services'],
+          'COMPREHENSIVE_AUTO_PROTECTION': ['Auto deductible coverage', 'Roadside assistance', 'Rental car coverage', 'Towing service'],
+          'HOME_DEDUCTIBLE_REIMBURSEMENT': ['Home insurance deductible coverage', 'Identity theft protection', 'Fast claims processing'],
+          'AUTO_ADVANTAGE_DEDUCTIBLE_REIMBURSEMENT': ['Single vehicle coverage', 'Identity theft protection', 'Warranty vault'],
+          'MULTI_VEHICLE_DEDUCTIBLE_REIMBURSEMENT': ['Multiple vehicle coverage', 'Flexible additions', 'Family protection'],
+          'ALL_VEHICLE_DEDUCTIBLE_REIMBURSEMENT': ['All vehicle types', 'Unlimited additions', 'Priority processing'],
+          'AUTO_RV_DEDUCTIBLE_REIMBURSEMENT': ['Auto & RV coverage', 'Enhanced RV services', 'Specialized support'],
+          'HERO_LEVEL_HOME_PROTECTION': ['Premium home coverage', 'Concierge service', 'Maximum protection']
+        }
+        
+        return featureMap[code] || ['Professional coverage', 'Expert service', 'Competitive rates']
+      }
+
+      if (responseData.products && Array.isArray(responseData.products)) {
+        const heroProductsObj = {}
+        
+        // Process all products from database as Hero products (no VSC products in database)
+        responseData.products.forEach(product => {
+          // Use product_code as the key instead of id
+          const productKey = product.product_code || `product_${product.id}`
+          const category = getCategoryFromProductCode(product.product_code || '')
+          const features = generateFeatures(product.product_code || '')
+          
+          // Get correct pricing data from July 2025 document
+          const pricingData = getCorrectPricingData(product.product_code || '', product.base_price || 0)
+
+          heroProductsObj[productKey] = {
+            id: productKey,
+            name: product.product_name || 'Unknown Product',
+            category: category,
+            description: product.description || `${product.product_name} with comprehensive coverage`,
+            active: product.active ?? true,
+            pricing: pricingData.pricing,
+            features: features,
+            terms_available: pricingData.terms,
+            tax_rate: 0.08,
+            wholesale_discount: 0.15,
+            base_price: product.base_price || 0,
+            min_price: pricingData.minPrice,
+            max_price: pricingData.maxPrice,
+            product_code: product.product_code,
+            created_at: product.created_at,
+            pricing_count: product.pricing_count
+          }
+        })
+        
+        // Hard-coded VSC products since they're not in the database
+        const vscProductsObj = {
+          silver: {
+            id: 'silver',
+            name: 'Silver VSC Coverage',
+            description: 'Basic vehicle service contract with essential coverage',
+            active: true,
+            coverage_items: ['Engine', 'Transmission', 'Drive axle', 'A/C Compressor', 'Power steering'],
+            deductible_options: [0, 50, 100, 200],
+            term_options: [12, 24, 36, 48],
+            category: 'vsc',
+            base_price: 1200
+          },
+          gold: {
+            id: 'gold',
+            name: 'Gold VSC Coverage',
+            description: 'Enhanced vehicle service contract with expanded coverage',
+            active: true,
+            coverage_items: ['All Silver coverage', 'Electrical system', 'Fuel system', 'Cooling system', 'Brake system'],
+            deductible_options: [0, 50, 100, 200],
+            term_options: [12, 24, 36, 48, 60],
+            category: 'vsc',
+            base_price: 1800
+          },
+          platinum: {
+            id: 'platinum',
+            name: 'Platinum VSC Coverage',
+            description: 'Comprehensive vehicle service contract with maximum protection',
+            active: true,
+            coverage_items: ['All Gold coverage', 'Suspension', 'Climate control', 'Navigation system', 'Advanced electronics'],
+            deductible_options: [0, 50, 100, 200],
+            term_options: [12, 24, 36, 48, 60, 72],
+            category: 'vsc',
+            base_price: 2400
+          }
+        }
+        
+        setHeroProducts(heroProductsObj)
+        setVscProducts(vscProductsObj)
+      } else {
+        // Fallback
+        setHeroProducts({})
+        setVscProducts({})
+      }
+      
     } catch (error) {
       console.error('Failed to load products:', error)
       // Set mock data for demo
@@ -67,44 +222,9 @@ export default function ProductManagement() {
           terms_available: [1, 2, 3, 4, 5],
           tax_rate: 0.08,
           wholesale_discount: 0.15
-        },
-        auto_advantage: {
-          id: 'auto_advantage',
-          name: 'Auto Advantage DDR',
-          category: 'deductible_reimbursement',
-          description: 'Auto deductible reimbursement program',
-          active: true,
-          pricing: {
-            '1': { base_price: 120, admin_fee: 15 },
-            '2': { base_price: 180, admin_fee: 15 },
-            '3': { base_price: 225, admin_fee: 15 }
-          },
-          features: ['Collision coverage', 'Comprehensive coverage', 'Glass protection'],
-          terms_available: [1, 2, 3],
-          tax_rate: 0.08,
-          wholesale_discount: 0.15
         }
       })
-      setVscProducts({
-        silver: {
-          id: 'silver',
-          name: 'Silver VSC Coverage',
-          description: 'Basic vehicle service contract',
-          active: true,
-          coverage_items: ['Engine', 'Transmission', 'Drive axle'],
-          deductible_options: [0, 50, 100, 200],
-          term_options: [12, 24, 36, 48]
-        },
-        gold: {
-          id: 'gold',
-          name: 'Gold VSC Coverage',
-          description: 'Enhanced vehicle service contract',
-          active: true,
-          coverage_items: ['All Silver coverage', 'A/C', 'Power steering'],
-          deductible_options: [0, 50, 100, 200],
-          term_options: [12, 24, 36, 48, 60]
-        }
-      })
+      setVscProducts({})
     } finally {
       setLoading(false)
     }
@@ -233,10 +353,7 @@ export default function ProductManagement() {
                         <CardTitle className="text-lg">{product.name}</CardTitle>
                       </div>
                       <div className="flex items-center space-x-2">
-                        <Switch
-                          checked={product.active}
-                          onCheckedChange={() => toggleProductStatus('hero', product.id)}
-                        />
+                        
                         <Badge variant={product.active ? 'default' : 'secondary'}>
                           {product.active ? 'Active' : 'Inactive'}
                         </Badge>

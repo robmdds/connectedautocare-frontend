@@ -1,6 +1,6 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
-import { Calculator, Car, Home, Shield, DollarSign, CheckCircle } from 'lucide-react'
+import { Calculator, Car, Home, Shield, DollarSign, CheckCircle, AlertCircle, Loader, Search } from 'lucide-react'
 import { Button } from '../components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card'
 import { Input } from '../components/ui/input'
@@ -15,6 +15,10 @@ const QuotePage = () => {
   const [loading, setLoading] = useState(false)
   const [quote, setQuote] = useState(null)
   const [error, setError] = useState('')
+  const [vinDecoding, setVinDecoding] = useState(false)
+  const [vinError, setVinError] = useState('')
+  const [vinInfo, setVinInfo] = useState(null)
+  const [eligibilityCheck, setEligibilityCheck] = useState(null)
 
   // Hero Products Form State
   const [heroForm, setHeroForm] = useState({
@@ -24,15 +28,17 @@ const QuotePage = () => {
     customer_type: 'retail'
   })
 
-  // VSC Form State
+  // Enhanced VSC Form State with VIN
   const [vscForm, setVscForm] = useState({
+    vin: '',
     make: '',
     model: '',
     year: '',
     mileage: '',
     coverage_level: '',
     term_months: '',
-    customer_type: 'retail'
+    customer_type: 'retail',
+    auto_populated: false
   })
 
   const heroProducts = [
@@ -52,6 +58,153 @@ const QuotePage = () => {
     'Volkswagen', 'Volvo', 'Acura', 'Infiniti'
   ]
 
+  // VIN Validation
+  const validateVIN = (vin) => {
+    const vinRegex = /^[A-HJ-NPR-Z0-9]{17}$/i
+    if (!vin) return { valid: false, message: 'VIN is required' }
+    if (vin.length !== 17) return { valid: false, message: 'VIN must be 17 characters' }
+    if (!vinRegex.test(vin)) return { valid: false, message: 'Invalid VIN format' }
+    return { valid: true, message: 'Valid VIN format' }
+  }
+
+  // Decode VIN and populate vehicle fields
+  const decodeVIN = async (vin) => {
+    const validation = validateVIN(vin)
+    if (!validation.valid) {
+      setVinError(validation.message)
+      return
+    }
+
+    setVinDecoding(true)
+    setVinError('')
+    setVinInfo(null)
+    setEligibilityCheck(null)
+
+    try {
+      // Call VIN decoder API
+      const response = await fetch('/api/vin/decode', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ vin: vin.toUpperCase() })
+      })
+
+      const result = await response.json()
+
+      if (result.success && result.data) {
+        const vehicleInfo = result.data
+        setVinInfo(vehicleInfo)
+
+        // Auto-populate form fields
+        setVscForm(prev => ({
+          ...prev,
+          make: vehicleInfo.make || '',
+          model: vehicleInfo.model || '',
+          year: vehicleInfo.year ? vehicleInfo.year.toString() : '',
+          auto_populated: true
+        }))
+
+        // Check eligibility
+        checkVehicleEligibility(vehicleInfo)
+
+        setVinError('')
+      } else {
+        setVinError(result.error || 'Failed to decode VIN')
+        // Reset auto-populated fields on error
+        setVscForm(prev => ({
+          ...prev,
+          make: '',
+          model: '',
+          year: '',
+          auto_populated: false
+        }))
+      }
+    } catch (err) {
+      console.error('VIN decode error:', err)
+      setVinError('VIN decoder service unavailable')
+      setVscForm(prev => ({
+        ...prev,
+        make: '',
+        model: '',
+        year: '',
+        auto_populated: false
+      }))
+    } finally {
+      setVinDecoding(false)
+    }
+  }
+
+  // Check vehicle eligibility for VSC
+  const checkVehicleEligibility = (vehicleInfo) => {
+    const currentYear = new Date().getFullYear()
+    const vehicleAge = currentYear - (vehicleInfo.year || 0)
+    const maxMileage = parseInt(vscForm.mileage) || 0
+
+    let eligible = true
+    let warnings = []
+    let restrictions = []
+
+    // Age eligibility (typically 15 years max)
+    if (vehicleAge > 15) {
+      eligible = false
+      restrictions.push(`Vehicle is ${vehicleAge} years old (maximum 15 years)`)
+    } else if (vehicleAge > 10) {
+      warnings.push(`Vehicle is ${vehicleAge} years old - limited coverage options available`)
+    }
+
+    // Mileage eligibility (typically 150k max)
+    if (maxMileage > 150000) {
+      eligible = false
+      restrictions.push(`Vehicle has ${maxMileage.toLocaleString()} miles (maximum 150,000)`)
+    } else if (maxMileage > 125000) {
+      warnings.push(`High mileage vehicle - premium rates may apply`)
+    }
+
+    // Luxury vehicle considerations
+    const luxuryBrands = ['BMW', 'Mercedes-Benz', 'Audi', 'Lexus', 'Cadillac', 'Lincoln', 'Acura', 'Infiniti']
+    if (luxuryBrands.some(brand => vehicleInfo.make?.toUpperCase().includes(brand.toUpperCase()))) {
+      warnings.push('Luxury vehicle - specialized coverage options available')
+    }
+
+    setEligibilityCheck({
+      eligible,
+      warnings,
+      restrictions,
+      vehicleAge,
+      assessmentDate: new Date().toISOString()
+    })
+  }
+
+  // Handle VIN input with debounced decoding
+  useEffect(() => {
+    if (vscForm.vin && vscForm.vin.length === 17) {
+      const timer = setTimeout(() => {
+        decodeVIN(vscForm.vin)
+      }, 500) // Debounce for 500ms
+
+      return () => clearTimeout(timer)
+    } else if (vscForm.vin.length < 17 && vscForm.auto_populated) {
+      // Clear auto-populated fields if VIN becomes invalid
+      setVscForm(prev => ({
+        ...prev,
+        make: '',
+        model: '',
+        year: '',
+        auto_populated: false
+      }))
+      setVinInfo(null)
+      setEligibilityCheck(null)
+      setVinError('')
+    }
+  }, [vscForm.vin])
+
+  // Re-check eligibility when mileage changes
+  useEffect(() => {
+    if (vinInfo && vscForm.mileage) {
+      checkVehicleEligibility(vinInfo)
+    }
+  }, [vscForm.mileage, vinInfo])
 
   const handleHeroSubmit = async (e) => {
     e.preventDefault()
@@ -66,18 +219,16 @@ const QuotePage = () => {
         return
       }
 
-      // Ensure proper data types before sending
       const quoteData = {
         product_type: heroForm.product_type,
-        term_years: parseInt(heroForm.term_years), // Convert to number
-        coverage_limit: parseInt(heroForm.coverage_limit), // Convert to number
+        term_years: parseInt(heroForm.term_years),
+        coverage_limit: parseInt(heroForm.coverage_limit),
         customer_type: heroForm.customer_type
       }
 
       const response = await heroAPI.generateQuote(quoteData)
-
-      // Handle the array response format: [responseObject, statusCode]
       const responseData = Array.isArray(response) ? response[0] : response
+      
       if (responseData.success && responseData.data) {
         setQuote(responseData.data)
       } else {
@@ -91,7 +242,6 @@ const QuotePage = () => {
     }
   }
 
-  // Replace your handleVSCSubmit function with this:
   const handleVSCSubmit = async (e) => {
     e.preventDefault()
     setLoading(true)
@@ -99,26 +249,33 @@ const QuotePage = () => {
     setQuote(null)
 
     try {
+      // Check eligibility first
+      if (eligibilityCheck && !eligibilityCheck.eligible) {
+        setError(`Vehicle not eligible: ${eligibilityCheck.restrictions.join(', ')}`)
+        return
+      }
+
       const errors = validateQuoteData(vscForm, 'vsc')
       if (errors.length > 0) {
         setError(errors.join(', '))
         return
       }
 
-      // Ensure proper data types before sending
       const quoteData = {
         make: vscForm.make,
         model: vscForm.model,
-        year: parseInt(vscForm.year), // Convert to number
-        mileage: parseInt(vscForm.mileage), // Convert to number
+        year: parseInt(vscForm.year),
+        mileage: parseInt(vscForm.mileage),
         coverage_level: vscForm.coverage_level,
-        term_months: parseInt(vscForm.term_months), // Convert to number
-        customer_type: vscForm.customer_type
+        term_months: parseInt(vscForm.term_months),
+        customer_type: vscForm.customer_type,
+        // Include VIN and decoded info for reference
+        vin: vscForm.vin,
+        vin_decoded: vinInfo,
+        auto_populated: vscForm.auto_populated
       }
 
       const response = await vscAPI.generateQuote(quoteData)
-
-      // Handle the array response format: [responseObject, statusCode]
       const responseData = Array.isArray(response) ? response[0] : response
 
       if (responseData.success && responseData.data) {
@@ -255,17 +412,71 @@ const QuotePage = () => {
                     </form>
                   </TabsContent>
 
-                  {/* VSC Tab */}
+                  {/* Enhanced VSC Tab with VIN Auto-Detection */}
                   <TabsContent value="vsc" className="space-y-6">
                     <form onSubmit={handleVSCSubmit} className="space-y-6">
+                      {/* VIN Input Section */}
+                      <div className="space-y-4 p-4 bg-blue-50 rounded-lg border">
+                        <div className="flex items-center space-x-2">
+                          <Search className="h-5 w-5 text-blue-600" />
+                          <Label className="text-lg font-semibold text-blue-900">VIN Auto-Detection</Label>
+                        </div>
+                        
+                        <div className="space-y-2">
+                          <Label htmlFor="vsc-vin">Vehicle Identification Number (VIN)</Label>
+                          <div className="relative">
+                            <Input
+                              id="vsc-vin"
+                              placeholder="Enter 17-character VIN"
+                              value={vscForm.vin}
+                              onChange={(e) => setVscForm({...vscForm, vin: e.target.value.toUpperCase()})}
+                              maxLength={17}
+                              className={`${vinError ? 'border-red-500' : ''} ${vinInfo ? 'border-green-500' : ''}`}
+                            />
+                            {vinDecoding && (
+                              <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+                                <Loader className="h-4 w-4 animate-spin text-blue-600" />
+                              </div>
+                            )}
+                          </div>
+                          
+                          {vinError && (
+                            <div className="flex items-center space-x-2 text-red-600 text-sm">
+                              <AlertCircle className="h-4 w-4" />
+                              <span>{vinError}</span>
+                            </div>
+                          )}
+                          
+                          {vinInfo && (
+                            <div className="bg-green-50 p-3 rounded border border-green-200">
+                              <div className="flex items-center space-x-2 mb-2">
+                                <CheckCircle className="h-4 w-4 text-green-600" />
+                                <span className="text-green-800 font-medium">VIN Decoded Successfully</span>
+                              </div>
+                              <div className="text-sm space-y-1">
+                                <p><strong>Make:</strong> {vinInfo.make}</p>
+                                <p><strong>Model:</strong> {vinInfo.model}</p>
+                                <p><strong>Year:</strong> {vinInfo.year}</p>
+                                {vinInfo.trim && <p><strong>Trim:</strong> {vinInfo.trim}</p>}
+                                {vinInfo.engine && <p><strong>Engine:</strong> {vinInfo.engine}</p>}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Vehicle Information Fields */}
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div className="space-y-2">
-                          <Label htmlFor="vsc-make">Vehicle Make</Label>
+                          <Label htmlFor="vsc-make">
+                            Vehicle Make
+                            {vscForm.auto_populated && <Badge variant="secondary" className="ml-2 text-xs">Auto-filled</Badge>}
+                          </Label>
                           <Select 
                             value={vscForm.make} 
                             onValueChange={(value) => setVscForm({...vscForm, make: value})}
                           >
-                            <SelectTrigger>
+                            <SelectTrigger className={vscForm.auto_populated ? 'bg-green-50 border-green-300' : ''}>
                               <SelectValue placeholder="Select make" />
                             </SelectTrigger>
                             <SelectContent>
@@ -279,17 +490,24 @@ const QuotePage = () => {
                         </div>
 
                         <div className="space-y-2">
-                          <Label htmlFor="vsc-model">Vehicle Model</Label>
+                          <Label htmlFor="vsc-model">
+                            Vehicle Model
+                            {vscForm.auto_populated && <Badge variant="secondary" className="ml-2 text-xs">Auto-filled</Badge>}
+                          </Label>
                           <Input
                             id="vsc-model"
                             placeholder="Enter model"
                             value={vscForm.model}
                             onChange={(e) => setVscForm({...vscForm, model: e.target.value})}
+                            className={vscForm.auto_populated ? 'bg-green-50 border-green-300' : ''}
                           />
                         </div>
 
                         <div className="space-y-2">
-                          <Label htmlFor="vsc-year">Vehicle Year</Label>
+                          <Label htmlFor="vsc-year">
+                            Vehicle Year
+                            {vscForm.auto_populated && <Badge variant="secondary" className="ml-2 text-xs">Auto-filled</Badge>}
+                          </Label>
                           <Input
                             id="vsc-year"
                             type="number"
@@ -298,6 +516,7 @@ const QuotePage = () => {
                             max={new Date().getFullYear() + 1}
                             value={vscForm.year}
                             onChange={(e) => setVscForm({...vscForm, year: e.target.value})}
+                            className={vscForm.auto_populated ? 'bg-green-50 border-green-300' : ''}
                           />
                         </div>
 
@@ -352,7 +571,55 @@ const QuotePage = () => {
                         </div>
                       </div>
 
-                      <Button type="submit" className="w-full" disabled={loading}>
+                      {/* Eligibility Check Results */}
+                      {eligibilityCheck && (
+                        <div className={`p-4 rounded-lg border ${
+                          eligibilityCheck.eligible 
+                            ? 'bg-green-50 border-green-200' 
+                            : 'bg-red-50 border-red-200'
+                        }`}>
+                          <div className="flex items-center space-x-2 mb-2">
+                            {eligibilityCheck.eligible ? (
+                              <CheckCircle className="h-5 w-5 text-green-600" />
+                            ) : (
+                              <AlertCircle className="h-5 w-5 text-red-600" />
+                            )}
+                            <span className={`font-medium ${
+                              eligibilityCheck.eligible ? 'text-green-800' : 'text-red-800'
+                            }`}>
+                              {eligibilityCheck.eligible ? 'Vehicle Eligible' : 'Vehicle Not Eligible'}
+                            </span>
+                          </div>
+                          
+                          {eligibilityCheck.restrictions.length > 0 && (
+                            <div className="mb-2">
+                              <p className="text-red-800 font-medium text-sm mb-1">Restrictions:</p>
+                              <ul className="text-red-700 text-sm space-y-1">
+                                {eligibilityCheck.restrictions.map((restriction, index) => (
+                                  <li key={index}>• {restriction}</li>
+                                ))}
+                              </ul>
+                            </div>
+                          )}
+                          
+                          {eligibilityCheck.warnings.length > 0 && (
+                            <div>
+                              <p className="text-yellow-800 font-medium text-sm mb-1">Warnings:</p>
+                              <ul className="text-yellow-700 text-sm space-y-1">
+                                {eligibilityCheck.warnings.map((warning, index) => (
+                                  <li key={index}>• {warning}</li>
+                                ))}
+                              </ul>
+                            </div>
+                          )}
+                        </div>
+                      )}
+
+                      <Button 
+                        type="submit" 
+                        className="w-full" 
+                        disabled={loading || (eligibilityCheck && !eligibilityCheck.eligible)}
+                      >
                         {loading ? 'Calculating...' : 'Get VSC Quote'}
                       </Button>
                     </form>
@@ -369,7 +636,7 @@ const QuotePage = () => {
             </Card>
           </div>
 
-          {/* Quote Results */}
+          {/* Quote Results - keeping the existing quote display logic */}
           <div className="space-y-6">
             {quote ? (
               <motion.div
@@ -459,6 +726,20 @@ const QuotePage = () => {
                         </ul>
                       </div>
                     )}
+
+                    {/* VIN Information Display in Quote */}
+                    {activeTab === 'vsc' && vinInfo && (
+                      <div className="space-y-2 pt-4 border-t">
+                        <h4 className="font-semibold">Vehicle Information:</h4>
+                        <div className="text-sm space-y-1 bg-gray-50 p-3 rounded">
+                          <p><strong>VIN:</strong> {vscForm.vin}</p>
+                          <p><strong>Vehicle:</strong> {vinInfo.year} {vinInfo.make} {vinInfo.model}</p>
+                          {vinInfo.trim && <p><strong>Trim:</strong> {vinInfo.trim}</p>}
+                          {vinInfo.engine && <p><strong>Engine:</strong> {vinInfo.engine}</p>}
+                          <p><strong>Mileage:</strong> {parseInt(vscForm.mileage).toLocaleString()} miles</p>
+                        </div>
+                      </div>
+                    )}
                   </CardContent>
                 </Card>
               </motion.div>
@@ -470,7 +751,10 @@ const QuotePage = () => {
                     <div>
                       <h3 className="font-semibold">Get Your Quote</h3>
                       <p className="text-sm text-muted-foreground">
-                        Fill out the form to see your personalized pricing
+                        {activeTab === 'vsc' 
+                          ? 'Enter your VIN or vehicle details to see personalized pricing'
+                          : 'Fill out the form to see your personalized pricing'
+                        }
                       </p>
                     </div>
                   </div>
@@ -491,6 +775,10 @@ const QuotePage = () => {
                   </li>
                   <li className="flex items-center space-x-2">
                     <CheckCircle className="h-4 w-4 text-green-500" />
+                    <span>VIN-based auto-detection for accuracy</span>
+                  </li>
+                  <li className="flex items-center space-x-2">
+                    <CheckCircle className="h-4 w-4 text-green-500" />
                     <span>Competitive rates and flexible terms</span>
                   </li>
                   <li className="flex items-center space-x-2">
@@ -508,6 +796,30 @@ const QuotePage = () => {
                 </ul>
               </CardContent>
             </Card>
+
+            {/* VIN Decoder Help Card */}
+            {activeTab === 'vsc' && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center space-x-2">
+                    <Search className="h-5 w-5" />
+                    <span>VIN Help</span>
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="text-sm space-y-3">
+                  <p><strong>Where to find your VIN:</strong></p>
+                  <ul className="space-y-1 ml-4">
+                    <li>• Dashboard (driver's side, visible through windshield)</li>
+                    <li>• Driver's side door jamb sticker</li>
+                    <li>• Vehicle registration or title</li>
+                    <li>• Insurance documents</li>
+                  </ul>
+                  <p className="text-muted-foreground">
+                    The VIN automatically fills vehicle details and checks eligibility for our service contracts.
+                  </p>
+                </CardContent>
+              </Card>
+            )}
           </div>
         </div>
       </div>
@@ -516,4 +828,3 @@ const QuotePage = () => {
 }
 
 export default QuotePage
-

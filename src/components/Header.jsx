@@ -27,11 +27,13 @@ const Header = () => {
             <div className="flex items-center space-x-6">
               <div className="flex items-center space-x-2">
                 <Phone className="h-4 w-4" />
-                <span>1-800-AUTOCARE</span>
+                <span>1‑(866) 660‑7003</span>
               </div>
               <div className="flex items-center space-x-2">
-                <Mail className="h-4 w-4" />
-                <span>info@connectedautocare.com</span>
+                <a href="mailto:info@connectedautocare.com" className="flex items-center space-x-2 text-white hover:text-blue-200">
+                  <Mail className="h-4 w-4" />
+                  <span>info@connectedautocare.com</span>
+                </a>
               </div>
             </div>
             <div className="hidden md:flex items-center space-x-4">

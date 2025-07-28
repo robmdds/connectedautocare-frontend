@@ -26,7 +26,8 @@ import {
   Search,
   ChevronDown,
   Package,
-  FileText
+  FileText,
+  Play
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import '../../App.css';
@@ -79,15 +80,15 @@ const DashboardLayout = ({ children, currentPage, onNavigate }) => {
     const adminItems = [
       { id: 'users', label: 'User Management', icon: Users, roles: ['admin'] },
       { id: 'products', label: 'Product Management', icon: Package, roles: ['admin'] },
+      { id: 'tpas', label: 'TPA Management', icon: Building2, roles: ['admin'] },
       { id: 'contracts', label: 'Contract Management', icon: FileText, roles: ['admin'] },
       { id: 'analytics', label: 'Analytics', icon: BarChart3, roles: ['admin', 'wholesale_reseller'] },
+      { id: 'video', label: 'Video Management', icon: Play, roles: ['admin'] },
       { id: 'settings', label: 'Settings', icon: Settings, roles: ['admin'] }
     ];
 
     const resellerItems = [
       { id: 'customers', label: 'Customers', icon: Users, roles: ['wholesale_reseller'] },
-      { id: 'products', label: 'Product Management', icon: Package, roles: ['wholesale_reseller'] },
-      { id: 'contracts', label: 'Contract Management', icon: FileText, roles: ['wholesale_reseller'] },
       { id: 'analytics', label: 'Analytics', icon: BarChart3, roles: ['wholesale_reseller'] }
     ];
 
