@@ -55,6 +55,8 @@ const HomePage = () => {
       try {
         const response = await fetch(endpoint)
         const data = await response.json()
+        console.log('Video data:', data)
+        console.log('Response:', response)
         
         if (data.success) {
           setVideoData({
