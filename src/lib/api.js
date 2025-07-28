@@ -1094,10 +1094,5 @@ export default api;
 // Additional exports for backward compatibility
 export { 
   api, 
-  CONFIG, 
-  vinUtils as vehicleUtils,
-  vinHelpers,
-  quoteUtils,
-  quoteStorage,
-  vinHistory
+  CONFIG
 };
