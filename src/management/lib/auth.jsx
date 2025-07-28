@@ -43,7 +43,6 @@ export const AuthProvider = ({ children }) => {
         setUser(userData);
         setIsAuthenticated(true);
       } else {
-        console.log('Token verification failed, logging out');
         logout();
       }
     } catch (error) {
@@ -60,8 +59,6 @@ export const AuthProvider = ({ children }) => {
       const endpoint = '/api/auth/login';
       const body = { email: usernameOrEmail, password };
 
-      console.log('Attempting login to:', `${API_BASE_URL}${endpoint}`);
-
       const response = await fetch(`${API_BASE_URL}${endpoint}`, {
         method: 'POST',
         headers: {
@@ -71,7 +68,6 @@ export const AuthProvider = ({ children }) => {
       });
 
       const data = await response.json();
-      console.log('Login response:', data);
 
       if (response.ok && data.token) {
         const { token: authToken, user: userData } = data;
@@ -81,8 +77,7 @@ export const AuthProvider = ({ children }) => {
         setUser(userData);
         setIsAuthenticated(true);
         localStorage.setItem('token', authToken);
-        
-        console.log('Login successful:', userData);
+
         return { success: true, user: userData };
       } else {
         console.error('Login failed:', data);
