@@ -90,10 +90,17 @@ const QuotePage = () => {
         body: JSON.stringify({ vin: vin.toUpperCase() })
       })
 
-      const result = await response.json()
+      const rawResult = await response.json()
+      
+      // Handle array response format: [responseData, statusCode]
+      const result = Array.isArray(rawResult) ? rawResult[0] : rawResult
+      
+      console.log('VIN decode result:', result) // Debug log
 
       if (result.success && result.data) {
-        const vehicleInfo = result.data
+        const vehicleInfo = result.data.vehicle_info || result.data
+        const eligibilityInfo = result.data.eligibility
+        
         setVinInfo(vehicleInfo)
 
         // Auto-populate form fields
@@ -105,8 +112,18 @@ const QuotePage = () => {
           auto_populated: true
         }))
 
-        // Check eligibility
-        checkVehicleEligibility(vehicleInfo)
+        // Use backend eligibility if available, otherwise check locally
+        if (eligibilityInfo) {
+          setEligibilityCheck({
+            eligible: eligibilityInfo.eligible,
+            warnings: eligibilityInfo.warnings || [],
+            restrictions: eligibilityInfo.restrictions || [],
+            vehicleAge: eligibilityInfo.eligibility_details?.vehicle_age,
+            assessmentDate: eligibilityInfo.assessment_date
+          })
+        } else {
+          checkVehicleEligibility(vehicleInfo)
+        }
 
         setVinError('')
       } else {

@@ -158,7 +158,13 @@ export const heroAPI = {
   checkHealth: () => api.get('/api/hero/health'),
   getAllProducts: () => api.get('/api/hero/products'),
   getProductsByCategory: (category) => api.get(`/api/hero/products/${category}`),
-  generateQuote: (quoteData) => api.post('/api/hero/quote', quoteData),
+  
+  generateQuote: async (quoteData) => {
+    const response = await api.post('/api/hero/quote', quoteData);
+    // Handle array response format: [responseData, statusCode]
+    return Array.isArray(response) ? response[0] : response;
+  },
+  
   getDatabaseProducts: () => api.get('/api/pricing/products'),
   getProductPricing: (productCode) => api.get(`/api/pricing/${productCode}`),
   getContactInfo: () => api.get('/api/contact'),
@@ -176,14 +182,38 @@ export const pricingAPI = {
 export const vscAPI = {
   checkHealth: () => api.get('/api/vsc/health'),
   getCoverageOptions: () => api.get('/api/vsc/coverage-options'),
-  generateQuote: (quoteData) => api.post('/api/vsc/quote', quoteData),
+  
+  generateQuote: async (quoteData) => {
+    const response = await api.post('/api/vsc/quote', quoteData);
+    // Handle array response format: [responseData, statusCode]
+    return Array.isArray(response) ? response[0] : response;
+  },
   
   // Enhanced VSC methods with VIN support
-  generateEnhancedQuote: (quoteData) => api.post('/api/vsc/quote/enhanced', quoteData),
-  generateQuoteFromVIN: (vinData) => api.post('/api/vsc/quote/vin', vinData),
-  checkEligibility: (vehicleData) => api.post('/api/vsc/eligibility', vehicleData),
-  getRecommendations: (vehicleData) => api.post('/api/vsc/recommendations', vehicleData),
-  getPricingFactors: (vehicleData) => api.post('/api/vsc/pricing/factors', vehicleData),
+  generateEnhancedQuote: async (quoteData) => {
+    const response = await api.post('/api/vsc/quote/enhanced', quoteData);
+    return Array.isArray(response) ? response[0] : response;
+  },
+  
+  generateQuoteFromVIN: async (vinData) => {
+    const response = await api.post('/api/vsc/quote/vin', vinData);
+    return Array.isArray(response) ? response[0] : response;
+  },
+  
+  checkEligibility: async (vehicleData) => {
+    const response = await api.post('/api/vsc/eligibility', vehicleData);
+    return Array.isArray(response) ? response[0] : response;
+  },
+  
+  getRecommendations: async (vehicleData) => {
+    const response = await api.post('/api/vsc/recommendations', vehicleData);
+    return Array.isArray(response) ? response[0] : response;
+  },
+  
+  getPricingFactors: async (vehicleData) => {
+    const response = await api.post('/api/vsc/pricing/factors', vehicleData);
+    return Array.isArray(response) ? response[0] : response;
+  },
 };
 
 // Enhanced VIN API
@@ -192,22 +222,49 @@ export const vinAPI = {
   checkEnhancedHealth: () => api.get('/api/vin/health/enhanced'),
   
   // Basic VIN operations
-  validateVIN: (vin) => api.post('/api/vin/validate', { vin }),
-  decodeVIN: (vin, includeEligibility = true, mileage = 0) => 
-    api.post('/api/vin/decode', { vin, include_eligibility: includeEligibility, mileage }),
+  validateVIN: async (vin) => {
+    const response = await api.post('/api/vin/validate', { vin });
+    // Handle array response format: [responseData, statusCode]
+    return Array.isArray(response) ? response[0] : response;
+  },
+  
+  decodeVIN: async (vin, includeEligibility = true, mileage = 0) => {
+    const response = await api.post('/api/vin/decode', { 
+      vin, 
+      include_eligibility: includeEligibility, 
+      mileage 
+    });
+    // Handle array response format: [responseData, statusCode]
+    return Array.isArray(response) ? response[0] : response;
+  },
   
   // Enhanced VIN operations
-  validateVINEnhanced: (vin) => api.post('/api/vin/enhanced/validate', { vin }),
-  decodeVINEnhanced: (vin, mileage = 0) => 
-    api.post('/api/vin/enhanced/decode', { vin, mileage }),
-  getVINInfoWithEligibility: (vin, mileage = 0) => 
-    api.post('/api/vin/enhanced/decode', { vin, mileage }),
+  validateVINEnhanced: async (vin) => {
+    const response = await api.post('/api/vin/enhanced/validate', { vin });
+    return Array.isArray(response) ? response[0] : response;
+  },
+  
+  decodeVINEnhanced: async (vin, mileage = 0) => {
+    const response = await api.post('/api/vin/enhanced/decode', { vin, mileage });
+    return Array.isArray(response) ? response[0] : response;
+  },
+  
+  getVINInfoWithEligibility: async (vin, mileage = 0) => {
+    const response = await api.post('/api/vin/enhanced/decode', { vin, mileage });
+    return Array.isArray(response) ? response[0] : response;
+  },
   
   // Batch operations
-  batchDecodeVINs: (vins) => api.post('/api/vin/batch/decode', { vins }),
+  batchDecodeVINs: async (vins) => {
+    const response = await api.post('/api/vin/batch/decode', { vins });
+    return Array.isArray(response) ? response[0] : response;
+  },
   
   // Manufacturer lookup
-  getManufacturerInfo: (wmi) => api.get(`/api/vin/manufacturer/${wmi}`),
+  getManufacturerInfo: async (wmi) => {
+    const response = await api.get(`/api/vin/manufacturer/${wmi}`);
+    return Array.isArray(response) ? response[0] : response;
+  },
 };
 
 export const paymentAPI = {
@@ -1094,5 +1151,5 @@ export default api;
 // Additional exports for backward compatibility
 export { 
   api, 
-  CONFIG
+  CONFIG, 
 };
