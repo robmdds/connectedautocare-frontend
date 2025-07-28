@@ -8,7 +8,7 @@ export default function Contact() {
   // Static contact info - matches your header/footer
   const contactInfo = {
     phone: '1-(866) 660-7003',
-    email: 'info@connectedautocare.com', // Match footer email
+    email: 'support@connectedautocare.com', // Match footer email
     support_hours: '24/7'
   };
 

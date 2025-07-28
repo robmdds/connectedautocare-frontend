@@ -107,7 +107,7 @@ const Footer = () => {
               <div className="flex items-center space-x-3">
                 <Mail className="h-4 w-4 text-primary"/>
                 <a href="mailto:info@connectedautocare.com" className="flex items-center space-x-2 text-gray-400 hover:text-blue-200">
-                  <span>info@connectedautocare.com</span>
+                  <span>support@connectedautocare.com</span>
                 </a>
               </div>
               <div className="flex items-start space-x-3">

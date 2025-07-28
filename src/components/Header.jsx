@@ -32,7 +32,7 @@ const Header = () => {
               <div className="flex items-center space-x-2">
                 <a href="mailto:info@connectedautocare.com" className="flex items-center space-x-2 text-white hover:text-blue-200">
                   <Mail className="h-4 w-4" />
-                  <span>info@connectedautocare.com</span>
+                  <span>support@connectedautocare.com</span>
                 </a>
               </div>
             </div>
