@@ -28,6 +28,7 @@ export const AuthProvider = ({ children }) => {
     }
   }, [token]);
 
+  // Enhanced token verification
   const verifyToken = async () => {
     try {
       const response = await fetch(`${API_BASE_URL}/api/auth/profile`, {
@@ -43,6 +44,8 @@ export const AuthProvider = ({ children }) => {
         setUser(userData);
         setIsAuthenticated(true);
       } else {
+        // Token is invalid or expired
+        console.log('Token verification failed, logging out');
         logout();
       }
     } catch (error) {
@@ -50,6 +53,28 @@ export const AuthProvider = ({ children }) => {
       logout();
     } finally {
       setLoading(false);
+    }
+  };
+
+  // New function to check token validity without setting loading states
+  const checkTokenValidity = async () => {
+    try {
+      const currentToken = localStorage.getItem('token');
+      if (!currentToken) {
+        return false;
+      }
+
+      const response = await fetch(`${API_BASE_URL}/api/auth/verify`, {
+        headers: {
+          'Authorization': `Bearer ${currentToken}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      return response.ok;
+    } catch (error) {
+      console.error('Token validation failed:', error);
+      return false;
     }
   };
 
@@ -163,6 +188,7 @@ export const AuthProvider = ({ children }) => {
       setUser(null);
       setIsAuthenticated(false);
       localStorage.removeItem('token');
+      localStorage.removeItem('user'); // Clear any cached user data
       setLoading(false);
     }
   };
@@ -237,12 +263,14 @@ export const AuthProvider = ({ children }) => {
     isAdmin: user?.role === 'admin',
     isReseller: user?.role === 'wholesale_reseller',
     isCustomer: user?.role === 'customer',
+    checkTokenValidity, // Added this function
     API_BASE_URL,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };
 
+// Enhanced apiCall with automatic token expiration handling
 export const apiCall = async (endpoint, options = {}) => {
   const token = localStorage.getItem('token');
   const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
@@ -265,6 +293,16 @@ export const apiCall = async (endpoint, options = {}) => {
 
   try {
     const response = await fetch(`${API_BASE_URL}${endpoint}`, mergedOptions);
+    
+    // Handle 401 Unauthorized responses (token expired/invalid)
+    if (response.status === 401) {
+      console.log('API call received 401, dispatching token expired event');
+      // Dispatch a custom event that the TokenExpirationHandler will catch
+      window.dispatchEvent(new CustomEvent('tokenExpired', {
+        detail: { message: 'Token expired', endpoint }
+      }));
+      throw new Error('Unauthorized - Token expired');
+    }
     
     // Check if response is JSON
     const contentType = response.headers.get('content-type');

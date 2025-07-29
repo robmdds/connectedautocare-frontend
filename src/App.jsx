@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './management/lib/auth';
+import { ProtectedRoute, PublicRoute, TokenExpirationHandler } from './components/ProtectedRoute';
 import './index.css';
 
 // Main website components
@@ -11,6 +12,7 @@ import HeroProductsPage from './pages/HeroProductsPage';
 import VSCPage from './pages/VSCPage';
 import QuotePage from './pages/QuotePage';
 import AboutPage from './pages/AboutPage';
+import Contact from './pages/ContactPage';
 
 // Management interface components
 import LoginPage from './management/components/LoginPage';
@@ -28,32 +30,16 @@ import UserManagement from './management/pages/UserManagement';
 import CustomerManagement from './management/pages/CustomerManagement';
 import PolicyManagement from './management/pages/PolicyManagement';
 import ProfileManagement from './management/pages/ProfileManagement';
-import Contact from './pages/ContactPage';
 
-// Protected Route Component
-const ProtectedRoute = ({ children }) => {
-  const { isAuthenticated, loading } = useAuth();
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-      </div>
-    );
-  }
-  return isAuthenticated ? children : <Navigate to="/login" replace />;
-};
-
-// Public Route Component
-const PublicRoute = ({ children }) => {
-  const { isAuthenticated, loading } = useAuth();
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-      </div>
-    );
-  }
-  return isAuthenticated ? <Navigate to="/dashboard" replace /> : children;
+// Enhanced Auth Provider with token expiration handling
+const EnhancedAuthProvider = ({ children }) => {
+  return (
+    <AuthProvider>
+      <TokenExpirationHandler>
+        {children}
+      </TokenExpirationHandler>
+    </AuthProvider>
+  );
 };
 
 // Unauthorized Access Component
@@ -173,7 +159,7 @@ const DashboardContainer = () => {
 // Main App Component
 const App = () => {
   return (
-    <AuthProvider>
+    <EnhancedAuthProvider>
       <Router>
         <div className="min-h-screen bg-background">
           <Routes>
@@ -250,7 +236,6 @@ const App = () => {
                 </>
               }
             />
-            
 
             {/* Public route (management interface) */}
             <Route
@@ -277,7 +262,7 @@ const App = () => {
           </Routes>
         </div>
       </Router>
-    </AuthProvider>
+    </EnhancedAuthProvider>
   );
 };
 

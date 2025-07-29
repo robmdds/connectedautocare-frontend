@@ -13,7 +13,7 @@ import {
   CheckCircle, 
   AlertCircle,
   FileVideo,
-  Image as ImageIcon,
+  ImageIcon,
   X
 } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
@@ -68,17 +68,17 @@ export default function VideoManagement() {
       });
 
       if (response.ok) {
-        const data = await response.json();
+        const rawData = await response.json();
         
-        // Handle array response format
-        let healthData;
-        if (Array.isArray(data)) {
-          // If it's an array, take the first element
-          healthData = data[0];
+        // Handle array response format [responseData, statusCode]
+        let data;
+        if (Array.isArray(rawData)) {
+          data = rawData[0]; // Take the first element which contains the actual response
         } else {
-          healthData = data;
+          data = rawData;
         }
-        setServiceHealth(healthData.data || healthData);
+        
+        setServiceHealth(data.data || data);
       }
     } catch (error) {
       console.error('Failed to check service health:', error);
@@ -116,7 +116,16 @@ export default function VideoManagement() {
         }
       }
 
-      const data = await response.json();
+      const rawData = await response.json();
+      
+      // Handle array response format [responseData, statusCode]
+      let data;
+      if (Array.isArray(rawData)) {
+        data = rawData[0]; // Take the first element which contains the actual response
+      } else {
+        data = rawData;
+      }
+      
       const video = data.data || data;
       setVideoInfo(video);
       setFormData({
@@ -246,17 +255,47 @@ export default function VideoManagement() {
         throw new Error(errorMessage);
       }
 
-      const data = await response.json();
-      const uploadedVideo = data.data.video_info;
+      const rawData = await response.json();
+      console.log('Upload response:', rawData); // Debug log
       
-      setVideoInfo(uploadedVideo);
-      setFormData({
-        video_url: uploadedVideo.video_url || '',
-        thumbnail_url: uploadedVideo.thumbnail_url || '',
-        title: uploadedVideo.title || '',
-        description: uploadedVideo.description || '',
-        duration: uploadedVideo.duration || ''
-      });
+      // Handle array response format [responseData, statusCode]
+      let data;
+      if (Array.isArray(rawData)) {
+        data = rawData[0]; // Take the first element which contains the actual response
+      } else {
+        data = rawData;
+      }
+      
+      console.log('Extracted data:', data); // Debug log
+      
+      // Handle different response structures
+      let uploadedVideo;
+      if (data.data && data.data.video_info) {
+        // Expected structure: { success: true, data: { video_info: {...} } }
+        uploadedVideo = data.data.video_info;
+      } else if (data.video_info) {
+        // Direct structure: { success: true, video_info: {...} }
+        uploadedVideo = data.video_info;
+      } else if (data.data) {
+        // Fallback: { success: true, data: {...} }
+        uploadedVideo = data.data;
+      } else {
+        // Last resort: use the whole data object
+        uploadedVideo = data;
+      }
+      
+      console.log('Processed video info:', uploadedVideo); // Debug log
+      
+      if (uploadedVideo) {
+        setVideoInfo(uploadedVideo);
+        setFormData({
+          video_url: uploadedVideo.video_url || '',
+          thumbnail_url: uploadedVideo.thumbnail_url || '',
+          title: uploadedVideo.title || '',
+          description: uploadedVideo.description || '',
+          duration: uploadedVideo.duration || ''
+        });
+      }
 
       // Clear upload files
       setUploadFiles({ video: null, thumbnail: null });
@@ -584,38 +623,6 @@ export default function VideoManagement() {
         </Card>
       </div>
 
-      {/* Current Video URLs (for manual editing if needed) */}
-      {videoInfo?.video_url && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Manual URL Configuration</CardTitle>
-            <CardDescription>Edit video URLs directly (advanced users only)</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div>
-              <Label htmlFor="video_url_manual">Video URL</Label>
-              <Input
-                id="video_url_manual"
-                value={formData.video_url}
-                onChange={(e) => setFormData(prev => ({ ...prev, video_url: e.target.value }))}
-                placeholder="https://blob.vercel-storage.com/video.mp4"
-                className="font-mono text-sm"
-              />
-            </div>
-
-            <div>
-              <Label htmlFor="thumbnail_url_manual">Thumbnail URL</Label>
-              <Input
-                id="thumbnail_url_manual"
-                value={formData.thumbnail_url}
-                onChange={(e) => setFormData(prev => ({ ...prev, thumbnail_url: e.target.value }))}
-                placeholder="https://blob.vercel-storage.com/thumbnail.jpg"
-                className="font-mono text-sm"
-              />
-            </div>
-          </CardContent>
-        </Card>
-      )}
     </div>
   );
 }

@@ -43,7 +43,36 @@ export default function SettingsManagement() {
       }
 
       const data = await response.json();
-      setSettings(data.data || data);
+      
+      // Parse the response structure correctly
+      let settingsData = {};
+      
+      if (Array.isArray(data) && data[0]) {
+        // If response is an array, get the first element
+        const responseObj = data[0];
+        if (responseObj.data) {
+          settingsData = responseObj.data;
+        }
+      } else if (data.data) {
+        // If response is an object with data property
+        settingsData = data.data;
+      } else {
+        // Use the response directly
+        settingsData = data;
+      }
+      
+      // Extract the settings categories (discounts, fees, markups, etc.)
+      // Skip any nested 'data' objects and numbered keys
+      const cleanedSettings = {};
+      Object.keys(settingsData).forEach(key => {
+        // Skip numeric keys and nested data objects
+        if (!isNaN(key) || key === 'data') {
+          return;
+        }
+        cleanedSettings[key] = settingsData[key];
+      });
+      
+      setSettings(cleanedSettings);
       
     } catch (error) {
       console.error('Failed to load settings:', error);
@@ -133,6 +162,9 @@ export default function SettingsManagement() {
         const errorText = await response.text();
         throw new Error(`Failed to save settings: ${errorText}`);
       }
+
+      // Show success message
+      setError(null);
       
     } catch (error) {
       console.error('Failed to save settings:', error);
@@ -220,11 +252,13 @@ export default function SettingsManagement() {
                   <Input
                     id="admin_fee"
                     type="number"
-                    step="0.01"
-                    value={settings.fees?.admin_fee || 0}
+                    value={settings.fees?.admin_fee || ''}
                     onChange={(e) => setSettings(prev => ({
                       ...prev,
-                      fees: { ...prev.fees, admin_fee: parseFloat(e.target.value) }
+                      fees: { 
+                        ...prev.fees, 
+                        admin_fee: e.target.value ? parseFloat(e.target.value) : 0
+                      }
                     }))}
                   />
                 </div>
@@ -233,11 +267,13 @@ export default function SettingsManagement() {
                   <Input
                     id="processing_fee"
                     type="number"
-                    step="0.01"
-                    value={settings.fees?.processing_fee || 0}
+                    value={settings.fees?.processing_fee || ''}
                     onChange={(e) => setSettings(prev => ({
                       ...prev,
-                      fees: { ...prev.fees, processing_fee: parseFloat(e.target.value) }
+                      fees: { 
+                        ...prev.fees, 
+                        processing_fee: e.target.value ? parseFloat(e.target.value) : 0
+                      }
                     }))}
                   />
                 </div>
@@ -246,17 +282,19 @@ export default function SettingsManagement() {
                   <Input
                     id="dealer_fee"
                     type="number"
-                    step="0.01"
-                    value={settings.fees?.dealer_fee || 0}
+                    value={settings.fees?.dealer_fee || ''}
                     onChange={(e) => setSettings(prev => ({
                       ...prev,
-                      fees: { ...prev.fees, dealer_fee: parseFloat(e.target.value) }
+                      fees: { 
+                        ...prev.fees, 
+                        dealer_fee: e.target.value ? parseFloat(e.target.value) : 0
+                      }
                     }))}
                   />
                 </div>
                 <Button onClick={saveSettings} disabled={saving} className="w-full">
                   <Save className="w-4 h-4 mr-2" />
-                  Save Fee Settings
+                  {saving ? 'Saving...' : 'Save Fee Settings'}
                 </Button>
               </CardContent>
             </Card>
@@ -273,10 +311,13 @@ export default function SettingsManagement() {
                     id="retail_markup"
                     type="number"
                     step="0.01"
-                    value={settings.markups?.retail_markup || 1}
+                    value={settings.markups?.retail_markup || ''}
                     onChange={(e) => setSettings(prev => ({
                       ...prev,
-                      markups: { ...prev.markups, retail_markup: parseFloat(e.target.value) }
+                      markups: { 
+                        ...prev.markups, 
+                        retail_markup: e.target.value ? parseFloat(e.target.value) : 0
+                      }
                     }))}
                   />
                 </div>
@@ -286,16 +327,19 @@ export default function SettingsManagement() {
                     id="wholesale_markup"
                     type="number"
                     step="0.01"
-                    value={settings.markups?.wholesale_markup || 0.85}
+                    value={settings.markups?.wholesale_markup || ''}
                     onChange={(e) => setSettings(prev => ({
                       ...prev,
-                      markups: { ...prev.markups, wholesale_markup: parseFloat(e.target.value) }
+                      markups: { 
+                        ...prev.markups, 
+                        wholesale_markup: e.target.value ? parseFloat(e.target.value) : 0
+                      }
                     }))}
                   />
                 </div>
                 <Button onClick={saveSettings} disabled={saving} className="w-full">
                   <Save className="w-4 h-4 mr-2" />
-                  Save Markup Settings
+                  {saving ? 'Saving...' : 'Save Markup Settings'}
                 </Button>
               </CardContent>
             </Card>
@@ -346,7 +390,7 @@ export default function SettingsManagement() {
               </div>
               <Button onClick={saveContactInfo} disabled={saving} className="w-full">
                 <Save className="w-4 h-4 mr-2" />
-                Save Contact Info
+                {saving ? 'Saving...' : 'Save Contact Info'}
               </Button>
             </CardContent>
           </Card>
@@ -370,15 +414,18 @@ export default function SettingsManagement() {
                     step="0.01"
                     min="0"
                     max="1"
-                    value={settings.discounts?.wholesale_discount || 0.15}
+                    value={settings.discounts?.wholesale_discount || ''}
                     onChange={(e) => setSettings(prev => ({
                       ...prev,
-                      discounts: { ...prev.discounts, wholesale_discount: parseFloat(e.target.value) }
+                      discounts: { 
+                        ...prev.discounts, 
+                        wholesale_discount: e.target.value ? parseFloat(e.target.value) : 0
+                      }
                     }))}
                   />
                 </div>
                 <p className="text-xs text-gray-500 mt-1">
-                  Current: {((settings.discounts?.wholesale_discount || 0.15) * 100).toFixed(1)}%
+                  Current: {(((settings.discounts?.wholesale_discount || 0) * 100).toFixed(1))}%
                 </p>
               </div>
               
@@ -388,10 +435,13 @@ export default function SettingsManagement() {
                   id="volume_threshold"
                   type="number"
                   min="1"
-                  value={settings.discounts?.volume_discount_threshold || 10}
+                  value={settings.discounts?.volume_discount_threshold || ''}
                   onChange={(e) => setSettings(prev => ({
                     ...prev,
-                    discounts: { ...prev.discounts, volume_discount_threshold: parseInt(e.target.value) }
+                    discounts: { 
+                      ...prev.discounts, 
+                      volume_discount_threshold: e.target.value ? parseInt(e.target.value) : 0
+                    }
                   }))}
                 />
                 <p className="text-xs text-gray-500 mt-1">
@@ -410,21 +460,24 @@ export default function SettingsManagement() {
                     step="0.01"
                     min="0"
                     max="1"
-                    value={settings.discounts?.volume_discount_rate || 0.05}
+                    value={settings.discounts?.volume_discount_rate || ''}
                     onChange={(e) => setSettings(prev => ({
                       ...prev,
-                      discounts: { ...prev.discounts, volume_discount_rate: parseFloat(e.target.value) }
+                      discounts: { 
+                        ...prev.discounts, 
+                        volume_discount_rate: e.target.value ? parseFloat(e.target.value) : 0
+                      }
                     }))}
                   />
                 </div>
                 <p className="text-xs text-gray-500 mt-1">
-                  Current: {((settings.discounts?.volume_discount_rate || 0.05) * 100).toFixed(1)}%
+                  Current: {(((settings.discounts?.volume_discount_rate || 0) * 100).toFixed(1))}%
                 </p>
               </div>
               
               <Button onClick={saveSettings} disabled={saving} className="w-full">
                 <Save className="w-4 h-4 mr-2" />
-                Save Discount Settings
+                {saving ? 'Saving...' : 'Save Discount Settings'}
               </Button>
             </CardContent>
           </Card>

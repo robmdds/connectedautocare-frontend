@@ -13,10 +13,7 @@ import {
   Clock,
   Users,
   Award,
-  Play,
-  Pause,
-  Volume2,
-  VolumeX
+  Play
 } from 'lucide-react'
 import { Button } from '../components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card'
@@ -30,7 +27,7 @@ const HomePage = () => {
     satisfaction: 0
   })
 
-  // Video state
+  // Video state - simplified
   const [videoData, setVideoData] = useState({
     video_url: '',
     thumbnail_url: '',
@@ -41,24 +38,37 @@ const HomePage = () => {
     error: null
   })
 
-  const [videoControls, setVideoControls] = useState({
-    isPlaying: false,
-    isMuted: false,
-    showControls: false
-  })
-
   // Fetch video data
   useEffect(() => {
     const fetchVideoData = async () => {
       const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
       const endpoint = `${API_BASE_URL}/api/landing/video`;
+      
       try {
         const response = await fetch(endpoint);
-        const [result] = await response.json();
-
-        if (result.success) {
+        
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+        
+        const rawData = await response.json();
+        
+        let data;
+        if (Array.isArray(rawData)) {
+          data = rawData[0]; 
+        } else {
+          data = rawData;
+        }
+        
+        if (data.success && data.data) {
+          const videoInfo = data.data;
+         
           setVideoData({
-            ...result.data,
+            video_url: videoInfo.video_url || '',
+            thumbnail_url: videoInfo.thumbnail_url || '',
+            title: videoInfo.title || 'ConnectedAutoCare Hero Protection',
+            description: videoInfo.description || 'Comprehensive protection plans',
+            duration: videoInfo.duration || '2:30',
             loading: false,
             error: null
           });
@@ -66,7 +76,7 @@ const HomePage = () => {
           setVideoData(prev => ({
             ...prev,
             loading: false,
-            error: 'Failed to load video'
+            error: 'Invalid response format'
           }));
         }
       } catch (error) {
@@ -93,31 +103,6 @@ const HomePage = () => {
     }, 500)
     return () => clearTimeout(timer)
   }, [])
-
-  // Video control handlers
-  const togglePlay = () => {
-    const video = document.getElementById('hero-video')
-    if (video) {
-      if (videoControls.isPlaying) {
-        video.pause()
-      } else {
-        video.play()
-      }
-      setVideoControls(prev => ({ ...prev, isPlaying: !prev.isPlaying }))
-    }
-  }
-
-  const toggleMute = () => {
-    const video = document.getElementById('hero-video')
-    if (video) {
-      video.muted = !video.muted
-      setVideoControls(prev => ({ ...prev, isMuted: !prev.isMuted }))
-    }
-  }
-
-  const handleVideoEnd = () => {
-    setVideoControls(prev => ({ ...prev, isPlaying: false }))
-  }
 
   const features = [
     {
@@ -202,7 +187,7 @@ const HomePage = () => {
     }
   ]
 
-  // Hero Video Component
+  // Hero Video Component - Using VideoManagement approach
   const HeroVideo = () => {
     if (videoData.loading) {
       return (
@@ -238,100 +223,29 @@ const HomePage = () => {
 
     return (
       <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-4 border border-white/20">
-        <div 
-          className="relative aspect-video bg-black rounded-lg overflow-hidden group cursor-pointer"
-          onMouseEnter={() => setVideoControls(prev => ({ ...prev, showControls: true }))}
-          onMouseLeave={() => setVideoControls(prev => ({ ...prev, showControls: false }))}
-        >
-          {/* Video Element */}
-          <video
-            id="hero-video"
-            className="w-full h-full object-cover"
-            poster={videoData.thumbnail_url}
-            muted={videoControls.isMuted}
-            onEnded={handleVideoEnd}
-            onPlay={() => setVideoControls(prev => ({ ...prev, isPlaying: true }))}
-            onPause={() => setVideoControls(prev => ({ ...prev, isPlaying: false }))}
-            playsInline
-          >
-            <source src={videoData.video_url} type="video/mp4" />
-            Your browser does not support the video tag.
-          </video>
-
-          {/* Video Overlay Controls */}
-          <div className={`absolute inset-0 bg-black/40 flex items-center justify-center transition-opacity duration-300 ${
-            videoControls.showControls || !videoControls.isPlaying ? 'opacity-100' : 'opacity-0'
-          }`}>
-            {/* Play/Pause Button */}
-            <Button
-              size="lg"
-              onClick={togglePlay}
-              className="bg-white/20 hover:bg-white/30 backdrop-blur-sm border border-white/30 text-white"
+        <div className="space-y-4">
+          {/* Video with native controls - exactly like VideoManagement */}
+          <div className="relative bg-gray-100 rounded-lg overflow-hidden aspect-video">
+            <video
+              src={videoData.video_url}
+              poster={videoData.thumbnail_url}
+              controls
+              className="w-full h-full object-cover"
+              preload="metadata"
+              crossOrigin="anonymous"
             >
-              {videoControls.isPlaying ? (
-                <Pause className="h-8 w-8" />
-              ) : (
-                <Play className="h-8 w-8 ml-1" />
-              )}
-            </Button>
+              Your browser does not support the video tag.
+            </video>
           </div>
-
-          {/* Video Controls Bar */}
-          <div className={`absolute bottom-4 left-4 right-4 transition-opacity duration-300 ${
-            videoControls.showControls ? 'opacity-100' : 'opacity-0'
-          }`}>
-            <div className="bg-black/60 backdrop-blur-sm rounded-lg p-3 flex items-center justify-between">
-              <div className="flex items-center space-x-3">
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  onClick={togglePlay}
-                  className="text-white hover:bg-white/20 p-2"
-                >
-                  {videoControls.isPlaying ? (
-                    <Pause className="h-4 w-4" />
-                  ) : (
-                    <Play className="h-4 w-4" />
-                  )}
-                </Button>
-                
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  onClick={toggleMute}
-                  className="text-white hover:bg-white/20 p-2"
-                >
-                  {videoControls.isMuted ? (
-                    <VolumeX className="h-4 w-4" />
-                  ) : (
-                    <Volume2 className="h-4 w-4" />
-                  )}
-                </Button>
-                
-                <div className="text-white text-sm">
-                  {videoData.duration}
-                </div>
-              </div>
-
-              <div className="text-white text-sm font-medium">
-                {videoData.title}
-              </div>
+          
+          {/* Video Info - styled for the hero section */}
+          <div className="space-y-2 text-white">
+            <h3 className="font-semibold text-lg">{videoData.title}</h3>
+            <p className="text-sm text-white/80">{videoData.description}</p>
+            <div className="flex items-center justify-between text-xs text-white/60">
+              <span>Duration: {videoData.duration}</span>
             </div>
           </div>
-
-          {/* Video Title Overlay (when not playing) */}
-          {!videoControls.isPlaying && !videoControls.showControls && (
-            <div className="absolute bottom-4 left-4 right-4">
-              <div className="bg-black/60 backdrop-blur-sm rounded-lg p-4">
-                <h3 className="text-white font-semibold text-lg">{videoData.title}</h3>
-                <p className="text-white/80 text-sm">{videoData.description}</p>
-                <div className="flex items-center justify-between mt-2">
-                  <span className="text-white/60 text-xs">Duration: {videoData.duration}</span>
-                  <span className="text-white/60 text-xs">Click to play</span>
-                </div>
-              </div>
-            </div>
-          )}
         </div>
       </div>
     )
