@@ -252,7 +252,7 @@ export default function SettingsManagement() {
                   <Input
                     id="admin_fee"
                     type="number"
-                    value={settings.fees?.admin_fee || ''}
+                    value={settings.fees?.admin_fee || 0}
                     onChange={(e) => setSettings(prev => ({
                       ...prev,
                       fees: { 
@@ -267,7 +267,7 @@ export default function SettingsManagement() {
                   <Input
                     id="processing_fee"
                     type="number"
-                    value={settings.fees?.processing_fee || ''}
+                    value={settings.fees?.processing_fee || 0}
                     onChange={(e) => setSettings(prev => ({
                       ...prev,
                       fees: { 
@@ -282,7 +282,7 @@ export default function SettingsManagement() {
                   <Input
                     id="dealer_fee"
                     type="number"
-                    value={settings.fees?.dealer_fee || ''}
+                    value={settings.fees?.dealer_fee || 0}
                     onChange={(e) => setSettings(prev => ({
                       ...prev,
                       fees: { 
@@ -311,7 +311,7 @@ export default function SettingsManagement() {
                     id="retail_markup"
                     type="number"
                     step="0.01"
-                    value={settings.markups?.retail_markup || ''}
+                    value={settings.markups?.retail_markup || 0}
                     onChange={(e) => setSettings(prev => ({
                       ...prev,
                       markups: { 
@@ -327,7 +327,7 @@ export default function SettingsManagement() {
                     id="wholesale_markup"
                     type="number"
                     step="0.01"
-                    value={settings.markups?.wholesale_markup || ''}
+                    value={settings.markups?.wholesale_markup ||0}
                     onChange={(e) => setSettings(prev => ({
                       ...prev,
                       markups: { 
@@ -414,7 +414,7 @@ export default function SettingsManagement() {
                     step="0.01"
                     min="0"
                     max="1"
-                    value={settings.discounts?.wholesale_discount || ''}
+                    value={settings.discounts?.wholesale_discount || 0}
                     onChange={(e) => setSettings(prev => ({
                       ...prev,
                       discounts: { 
@@ -435,7 +435,7 @@ export default function SettingsManagement() {
                   id="volume_threshold"
                   type="number"
                   min="1"
-                  value={settings.discounts?.volume_discount_threshold || ''}
+                  value={settings.discounts?.volume_discount_threshold || 0}
                   onChange={(e) => setSettings(prev => ({
                     ...prev,
                     discounts: { 
@@ -460,7 +460,7 @@ export default function SettingsManagement() {
                     step="0.01"
                     min="0"
                     max="1"
-                    value={settings.discounts?.volume_discount_rate || ''}
+                    value={settings.discounts?.volume_discount_rate || 0}
                     onChange={(e) => setSettings(prev => ({
                       ...prev,
                       discounts: { 
