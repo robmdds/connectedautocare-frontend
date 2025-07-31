@@ -117,8 +117,6 @@ const QuotePage = () => {
     let warnings = []
     let restrictions = []
 
-    console.log('Eligibility Check:', { vehicleAge, mileage, year: vehicleInfo.year, currentYear })
-
     // Updated Age eligibility (20 years max as per your service)
     if (vehicleAge > 20) {
       eligible = false
@@ -179,12 +177,8 @@ const QuotePage = () => {
       const rawResult = await response.json()
       const result = Array.isArray(rawResult) ? rawResult[0] : rawResult
 
-      console.log('VIN decode raw result:', result)
-
       if (result.success && result.data) {
         const vehicleInfo = result.data.vehicle_info || result.data
-        
-        console.log('Extracted vehicle info:', vehicleInfo)
 
         setVinInfo(vehicleInfo)
 
@@ -203,8 +197,6 @@ const QuotePage = () => {
 
         setVscForm(updatedForm)
 
-        // Don't run eligibility check here - wait for mileage
-        console.log('VIN decoded successfully, waiting for mileage to check eligibility')
         setVinError('')
       } else {
         console.error('VIN decode failed:', result)
@@ -258,9 +250,7 @@ const QuotePage = () => {
   // Check eligibility when both VIN info and mileage are available
   useEffect(() => {
     if (vinInfo && vscForm.mileage && parseInt(vscForm.mileage) > 0) {
-      console.log('Running eligibility check with:', { vinInfo, mileage: vscForm.mileage })
       const eligibilityResult = checkVehicleEligibilityUpdated(vinInfo, vscForm.mileage)
-      console.log('Eligibility result:', eligibilityResult)
       setEligibilityCheck(eligibilityResult)
     } else if (vinInfo && !vscForm.mileage) {
       // Clear eligibility if mileage is removed
