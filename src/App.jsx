@@ -30,6 +30,7 @@ import UserManagement from './management/pages/UserManagement';
 import CustomerManagement from './management/pages/CustomerManagement';
 import PolicyManagement from './management/pages/PolicyManagement';
 import ProfileManagement from './management/pages/ProfileManagement';
+import VSCCoverageManagementPage from './management/pages/VSCCoverageManagement';
 
 // Enhanced Auth Provider with token expiration handling
 const EnhancedAuthProvider = ({ children }) => {
@@ -102,6 +103,12 @@ const DashboardContainer = () => {
         }
         return <ProductManagement />;
       
+      case 'vsc-coverage':
+        if (!isAdmin) {
+          return <UnauthorizedAccess requiredRole="Administrator" />;
+        }
+        return <VSCCoverageManagementPage />;
+            
       case 'tpas':
         if (!isAdmin) {
           return <UnauthorizedAccess requiredRole="Administrator" />;
@@ -143,6 +150,7 @@ const DashboardContainer = () => {
       // Common pages
       case 'profile':
         return <ProfileManagement />;
+      
       
       default:
         return <Dashboard />;

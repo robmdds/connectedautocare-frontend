@@ -80,6 +80,7 @@ const DashboardLayout = ({ children, currentPage, onNavigate }) => {
     const adminItems = [
       { id: 'users', label: 'User Management', icon: Users, roles: ['admin'] },
       { id: 'products', label: 'Product Management', icon: Package, roles: ['admin'] },
+      { id: 'vsc-coverage', label: 'VSC Coverage', icon: Shield, roles: ['admin'] },
       { id: 'tpas', label: 'TPA Management', icon: Building2, roles: ['admin'] },
       { id: 'contracts', label: 'Contract Management', icon: FileText, roles: ['admin'] },
       { id: 'analytics', label: 'Analytics', icon: BarChart3, roles: ['admin', 'wholesale_reseller'] },
@@ -242,7 +243,9 @@ const DashboardLayout = ({ children, currentPage, onNavigate }) => {
                 <Menu size={20} />
               </Button>
               <h1 className="text-xl font-semibold text-gray-900 capitalize">
-                {currentPage === 'dashboard' ? 'Dashboard' : currentPage.replace('_', ' ')}
+                {currentPage === 'dashboard' ? 'Dashboard' : 
+                currentPage === 'vsc-coverage' ? 'VSC Coverage Management' :
+                currentPage.replace('_', ' ').replace('-', ' ')}
               </h1>
             </div>
 

@@ -4,14 +4,14 @@ import {
   Plus,
   Edit,
   Trash2,
-  Eye,
-  EyeOff,
   Save,
   X,
   Package,
   DollarSign,
-  Tag,
-  Settings
+  AlertCircle,
+  CheckCircle,
+  RefreshCw,
+  Calculator
 } from 'lucide-react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card'
 import { Button } from '../components/ui/button'
@@ -20,7 +20,6 @@ import { Label } from '../components/ui/label'
 import { Textarea } from '../components/ui/textarea'
 import { Badge } from '../components/ui/badge'
 import { Switch } from '../components/ui/switch'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs'
 import {
   Dialog,
   DialogContent,
@@ -29,267 +28,239 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '../components/ui/dialog'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '../components/ui/select'
+import {
+  Alert,
+  AlertDescription,
+  AlertTitle,
+} from '../components/ui/alert'
 import { apiCall } from '../lib/auth'
 
-export default function ProductManagement() {
+export default function EnhancedProductManagement() {
   const [heroProducts, setHeroProducts] = useState({})
-  const [vscProducts, setVscProducts] = useState({})
   const [loading, setLoading] = useState(true)
   const [editingProduct, setEditingProduct] = useState(null)
   const [showCreateDialog, setShowCreateDialog] = useState(false)
+  const [showPricingDialog, setShowPricingDialog] = useState(false)
+  const [selectedProduct, setSelectedProduct] = useState(null)
+  const [notification, setNotification] = useState(null)
+  const [searchTerm, setSearchTerm] = useState('')
+  const [filterCategory, setFilterCategory] = useState('all')
 
   useEffect(() => {
     loadProducts()
   }, [])
+
+  const showNotification = (message, type = 'success') => {
+    setNotification({ message, type })
+    setTimeout(() => setNotification(null), 5000)
+  }
 
   const loadProducts = async () => {
     try {
       setLoading(true)
       const response = await apiCall('/api/admin/products')
       
-      // Handle the array response format [responseObject, statusCode]
-      let actualResponse = response;
-      
+      let actualResponse = response
       if (Array.isArray(response) && response.length >= 1 && typeof response[0] === 'object') {
-        actualResponse = response[0];
+        actualResponse = response[0]
       }
       
-      // Handle the success_response format
-      let responseData = actualResponse;
+      let responseData = actualResponse
       if (actualResponse && actualResponse.success && actualResponse.data) {
-        responseData = actualResponse.data;
-      }
-            
-      // Helper function to get correct pricing data based on July 2025 pricing document
-      const getCorrectPricingData = (productCode, basePrice) => {
-        const pricingMap = {
-          'HOME_PROTECTION_PLAN': { min: 199, max: 599, terms: [1, 2, 3, 4, 5] },
-          'COMPREHENSIVE_AUTO_PROTECTION': { min: 339, max: 1099, terms: [1, 2, 3, 4, 5] },
-          'HOME_DEDUCTIBLE_REIMBURSEMENT': { min: 160, max: 255, terms: [1, 2, 3] },
-          'MULTI_VEHICLE_DEDUCTIBLE_REIMBURSEMENT': { min: 150, max: 275, terms: [1, 2, 3] },
-          'AUTO_ADVANTAGE_DEDUCTIBLE_REIMBURSEMENT': { min: 120, max: 225, terms: [1, 2, 3] },
-          'ALL_VEHICLE_DEDUCTIBLE_REIMBURSEMENT': { min: 150, max: 275, terms: [1, 2, 3] },
-          'AUTO_RV_DEDUCTIBLE_REIMBURSEMENT': { min: 175, max: 280, terms: [1, 2, 3] },
-          'HERO_LEVEL_HOME_PROTECTION': { min: 789, max: 1295, terms: [1, 2, 3] }
-        }
-        
-        const pricing = pricingMap[productCode.toUpperCase()]
-        if (pricing) {
-          return {
-            minPrice: pricing.min,
-            maxPrice: pricing.max,
-            terms: pricing.terms,
-            pricing: pricing.terms.reduce((acc, term, index) => {
-              const termPrice = pricing.min + ((pricing.max - pricing.min) * (index / (pricing.terms.length - 1)))
-              acc[term] = { base_price: Math.round(termPrice), admin_fee: 25 }
-              return acc
-            }, {})
-          }
-        }
-        
-        // Fallback to base price if not found
-        return {
-          minPrice: basePrice,
-          maxPrice: basePrice,
-          terms: [1, 2, 3],
-          pricing: { '1': { base_price: basePrice, admin_fee: 25 } }
-        }
-      }
-
-      // Helper function to determine category from product_code
-      const getCategoryFromProductCode = (productCode) => {
-        const code = productCode.toUpperCase()
-        if (code.includes('HOME_PROTECTION') || code.includes('HERO_LEVEL_HOME')) {
-          return 'home_protection'
-        } else if (code.includes('COMPREHENSIVE_AUTO')) {
-          return 'auto_protection'
-        } else {
-          return 'deductible_reimbursement'
-        }
-      }
-
-      // Helper function to generate features based on product code
-      const generateFeatures = (productCode) => {
-        const code = productCode.toUpperCase()
-        const featureMap = {
-          'HOME_PROTECTION_PLAN': ['HVAC coverage', 'Plumbing protection', '24/7 support', 'Glass repair', 'Emergency services'],
-          'COMPREHENSIVE_AUTO_PROTECTION': ['Auto deductible coverage', 'Roadside assistance', 'Rental car coverage', 'Towing service'],
-          'HOME_DEDUCTIBLE_REIMBURSEMENT': ['Home insurance deductible coverage', 'Identity theft protection', 'Fast claims processing'],
-          'AUTO_ADVANTAGE_DEDUCTIBLE_REIMBURSEMENT': ['Single vehicle coverage', 'Identity theft protection', 'Warranty vault'],
-          'MULTI_VEHICLE_DEDUCTIBLE_REIMBURSEMENT': ['Multiple vehicle coverage', 'Flexible additions', 'Family protection'],
-          'ALL_VEHICLE_DEDUCTIBLE_REIMBURSEMENT': ['All vehicle types', 'Unlimited additions', 'Priority processing'],
-          'AUTO_RV_DEDUCTIBLE_REIMBURSEMENT': ['Auto & RV coverage', 'Enhanced RV services', 'Specialized support'],
-          'HERO_LEVEL_HOME_PROTECTION': ['Premium home coverage', 'Concierge service', 'Maximum protection']
-        }
-        
-        return featureMap[code] || ['Professional coverage', 'Expert service', 'Competitive rates']
+        responseData = actualResponse.data
       }
 
       if (responseData.products && Array.isArray(responseData.products)) {
         const heroProductsObj = {}
         
-        // Process all products from database as Hero products (no VSC products in database)
         responseData.products.forEach(product => {
-          // Use product_code as the key instead of id
           const productKey = product.product_code || `product_${product.id}`
           const category = getCategoryFromProductCode(product.product_code || '')
           const features = generateFeatures(product.product_code || '')
           
-          // Get correct pricing data from July 2025 document
-          const pricingData = getCorrectPricingData(product.product_code || '', product.base_price || 0)
-
           heroProductsObj[productKey] = {
             id: productKey,
             name: product.product_name || 'Unknown Product',
             category: category,
             description: product.description || `${product.product_name} with comprehensive coverage`,
             active: product.active ?? true,
-            pricing: pricingData.pricing,
+            pricing: product.pricing || {},
             features: features,
-            terms_available: pricingData.terms,
+            terms_available: product.terms_available || [1, 2, 3],
             tax_rate: 0.08,
             wholesale_discount: 0.15,
             base_price: product.base_price || 0,
-            min_price: pricingData.minPrice,
-            max_price: pricingData.maxPrice,
+            min_price: product.min_price || 0,
+            max_price: product.max_price || 0,
             product_code: product.product_code,
             created_at: product.created_at,
-            pricing_count: product.pricing_count
+            pricing_count: product.pricing_count || 0
           }
         })
         
-        // Hard-coded VSC products since they're not in the database
-        const vscProductsObj = {
-          silver: {
-            id: 'silver',
-            name: 'Silver VSC Coverage',
-            description: 'Basic vehicle service contract with essential coverage',
-            active: true,
-            coverage_items: ['Engine', 'Transmission', 'Drive axle', 'A/C Compressor', 'Power steering'],
-            deductible_options: [0, 50, 100, 200],
-            term_options: [12, 24, 36, 48],
-            category: 'vsc',
-            base_price: 1200
-          },
-          gold: {
-            id: 'gold',
-            name: 'Gold VSC Coverage',
-            description: 'Enhanced vehicle service contract with expanded coverage',
-            active: true,
-            coverage_items: ['All Silver coverage', 'Electrical system', 'Fuel system', 'Cooling system', 'Brake system'],
-            deductible_options: [0, 50, 100, 200],
-            term_options: [12, 24, 36, 48, 60],
-            category: 'vsc',
-            base_price: 1800
-          },
-          platinum: {
-            id: 'platinum',
-            name: 'Platinum VSC Coverage',
-            description: 'Comprehensive vehicle service contract with maximum protection',
-            active: true,
-            coverage_items: ['All Gold coverage', 'Suspension', 'Climate control', 'Navigation system', 'Advanced electronics'],
-            deductible_options: [0, 50, 100, 200],
-            term_options: [12, 24, 36, 48, 60, 72],
-            category: 'vsc',
-            base_price: 2400
-          }
-        }
-        
         setHeroProducts(heroProductsObj)
-        setVscProducts(vscProductsObj)
-      } else {
-        // Fallback
-        setHeroProducts({})
-        setVscProducts({})
       }
-      
     } catch (error) {
       console.error('Failed to load products:', error)
-      // Set mock data for demo
-      setHeroProducts({
-        home_protection: {
-          id: 'home_protection',
-          name: 'Home Protection Plan',
-          category: 'home_protection',
-          description: 'Comprehensive home protection coverage',
-          active: true,
-          pricing: {
-            '1': { base_price: 199, admin_fee: 25 },
-            '2': { base_price: 299, admin_fee: 25 },
-            '3': { base_price: 399, admin_fee: 25 }
-          },
-          features: ['HVAC coverage', 'Plumbing protection', '24/7 support'],
-          terms_available: [1, 2, 3, 4, 5],
-          tax_rate: 0.08,
-          wholesale_discount: 0.15
-        }
-      })
-      setVscProducts({})
+      showNotification('Failed to load products', 'error')
     } finally {
       setLoading(false)
     }
   }
 
-  const toggleProductStatus = async (productType, productId) => {
-    try {
-      await apiCall(`/api/admin/products/toggle-status/${productType}/${productId}`, {
-        method: 'POST'
-      })
-      
-      if (productType === 'hero') {
-        setHeroProducts(prev => ({
-          ...prev,
-          [productId]: {
-            ...prev[productId],
-            active: !prev[productId].active
-          }
-        }))
-      } else {
-        setVscProducts(prev => ({
-          ...prev,
-          [productId]: {
-            ...prev[productId],
-            active: !prev[productId].active
-          }
-        }))
-      }
-    } catch (error) {
-      console.error('Failed to toggle product status:', error)
+  const getCategoryFromProductCode = (productCode) => {
+    const code = productCode.toUpperCase()
+    if (code.includes('HOME_PROTECTION') || code.includes('HERO_LEVEL_HOME')) {
+      return 'home_protection'
+    } else if (code.includes('COMPREHENSIVE_AUTO')) {
+      return 'auto_protection'
+    } else {
+      return 'deductible_reimbursement'
     }
+  }
+
+  const generateFeatures = (productCode) => {
+    const code = productCode.toUpperCase()
+    const featureMap = {
+      'HOME_PROTECTION_PLAN': ['HVAC coverage', 'Plumbing protection', '24/7 support', 'Glass repair', 'Emergency services'],
+      'COMPREHENSIVE_AUTO_PROTECTION': ['Auto deductible coverage', 'Roadside assistance', 'Rental car coverage', 'Towing service'],
+      'HOME_DEDUCTIBLE_REIMBURSEMENT': ['Home insurance deductible coverage', 'Identity theft protection', 'Fast claims processing'],
+      'AUTO_ADVANTAGE_DEDUCTIBLE_REIMBURSEMENT': ['Single vehicle coverage', 'Identity theft protection', 'Warranty vault'],
+      'MULTI_VEHICLE_DEDUCTIBLE_REIMBURSEMENT': ['Multiple vehicle coverage', 'Flexible additions', 'Family protection'],
+      'ALL_VEHICLE_DEDUCTIBLE_REIMBURSEMENT': ['All vehicle types', 'Unlimited additions', 'Priority processing'],
+      'AUTO_RV_DEDUCTIBLE_REIMBURSEMENT': ['Auto & RV coverage', 'Enhanced RV services', 'Specialized support'],
+      'HERO_LEVEL_HOME_PROTECTION': ['Premium home coverage', 'Concierge service', 'Maximum protection']
+    }
+    
+    return featureMap[code] || ['Professional coverage', 'Expert service', 'Competitive rates']
   }
 
   const saveProduct = async (productData) => {
     try {
       if (editingProduct) {
-        // Update existing product
-        await apiCall(`/api/admin/products/hero/${editingProduct.id}`, {
+        const response = await apiCall(`/api/admin/products/${editingProduct.product_code}`, {
           method: 'PUT',
-          body: JSON.stringify(productData)
+          body: JSON.stringify({
+            product_name: productData.name,
+            description: productData.description,
+            active: productData.active,
+            base_price: productData.base_price
+          })
         })
         
-        setHeroProducts(prev => ({
-          ...prev,
-          [editingProduct.id]: { ...editingProduct, ...productData }
-        }))
+        if (response.success) {
+          setHeroProducts(prev => ({
+            ...prev,
+            [editingProduct.id]: { ...editingProduct, ...productData }
+          }))
+          await loadProducts();
+          showNotification('Product updated successfully')
+          setEditingProduct(null)
+        }
       } else {
-        // Create new product
-        await apiCall('/api/admin/products/hero', {
+        const response = await apiCall('/api/admin/products', {
           method: 'POST',
-          body: JSON.stringify(productData)
+          body: JSON.stringify({
+            product_code: productData.product_code,
+            product_name: productData.name,
+            description: productData.description,
+            base_price: productData.base_price,
+            active: productData.active
+          })
         })
         
-        setHeroProducts(prev => ({
-          ...prev,
-          [productData.id]: productData
-        }))
+        if (response.success) {
+          await loadProducts()
+          showNotification('Product created successfully')
+        }
       }
       
       setEditingProduct(null)
       setShowCreateDialog(false)
     } catch (error) {
       console.error('Failed to save product:', error)
+      showNotification('Failed to save product', 'error')
     }
   }
+
+  const updateProductPricing = async (productCode, pricingData) => {
+    try {
+      const response = await apiCall(`/api/admin/pricing/${productCode}`, {
+        method: 'PUT',
+        body: JSON.stringify(pricingData)
+      })
+      
+      if (response.success) {
+        await loadProducts()
+        showNotification('Pricing updated successfully')
+        setShowPricingDialog(false)
+        setSelectedProduct(null)
+      }
+    } catch (error) {
+      console.error('Failed to update pricing:', error)
+      showNotification('Failed to update pricing', 'error')
+    }
+  }
+
+  const deleteProduct = async (productCode) => {
+    if (!confirm('Are you sure you want to delete this product? This action cannot be undone.')) {
+      return
+    }
+
+    try {
+      const response = await apiCall(`/api/admin/products/${productCode}`, {
+        method: 'DELETE'
+      })
+      
+      if (response.success) {
+        await loadProducts()
+        showNotification('Product deleted successfully')
+      }
+    } catch (error) {
+      console.error('Failed to delete product:', error)
+      showNotification('Failed to delete product', 'error')
+    }
+  }
+
+  const toggleProductStatus = async (productCode) => {
+    try {
+      const product = heroProducts[productCode]
+      const response = await apiCall(`/api/admin/products/${productCode}`, {
+        method: 'PUT',
+        body: JSON.stringify({
+          active: !product.active
+        })
+      })
+      
+      if (response.success) {
+        setHeroProducts(prev => ({
+          ...prev,
+          [productCode]: {
+            ...prev[productCode],
+            active: !prev[productCode].active
+          }
+        }))
+        showNotification(`Product ${!product.active ? 'activated' : 'deactivated'} successfully`)
+      }
+    } catch (error) {
+      console.error('Failed to toggle product status:', error)
+      showNotification('Failed to update product status', 'error')
+    }
+  }
+
+  const filteredProducts = Object.values(heroProducts).filter(product => {
+    const matchesSearch = product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         product.product_code.toLowerCase().includes(searchTerm.toLowerCase())
+    const matchesCategory = filterCategory === 'all' || product.category === filterCategory
+    return matchesSearch && matchesCategory
+  })
 
   if (loading) {
     return (
@@ -301,218 +272,222 @@ export default function ProductManagement() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
+      {notification && (
+        <Alert className={notification.type === 'error' ? 'border-red-500 bg-red-50' : 'border-green-500 bg-green-50'}>
+          {notification.type === 'error' ? <AlertCircle className="h-4 w-4" /> : <CheckCircle className="h-4 w-4" />}
+          <AlertTitle>{notification.type === 'error' ? 'Error' : 'Success'}</AlertTitle>
+          <AlertDescription>{notification.message}</AlertDescription>
+        </Alert>
+      )}
+
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
             Product Management
           </h1>
           <p className="text-gray-600 dark:text-gray-400 mt-1">
-            Manage your Hero products and VSC coverage options
+            Manage your Hero products, pricing, and coverage options
           </p>
         </div>
-        <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
-          <DialogTrigger asChild>
-            <Button>
-              <Plus className="w-4 h-4 mr-2" />
-              Add Product
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="max-w-2xl">
-            <DialogHeader>
-              <DialogTitle>Create New Product</DialogTitle>
-              <DialogDescription>
-                Add a new Hero product to your platform
-              </DialogDescription>
-            </DialogHeader>
-            <ProductForm onSave={saveProduct} onCancel={() => setShowCreateDialog(false)} />
-          </DialogContent>
-        </Dialog>
+        <div className="flex space-x-2">
+          <Button variant="outline" onClick={loadProducts}>
+            <RefreshCw className="w-4 h-4 mr-2" />
+            Refresh
+          </Button>
+          <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
+            <DialogTrigger asChild>
+              <Button>
+                <Plus className="w-4 h-4 mr-2" />
+                Add Product
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-2xl">
+              <DialogHeader>
+                <DialogTitle>Create New Hero Product</DialogTitle>
+                <DialogDescription>
+                  Add a new Hero product to your platform
+                </DialogDescription>
+              </DialogHeader>
+              <ProductForm onSave={saveProduct} onCancel={() => setShowCreateDialog(false)} />
+            </DialogContent>
+          </Dialog>
+        </div>
       </div>
 
-      <Tabs defaultValue="hero" className="space-y-6">
-        <TabsList>
-          <TabsTrigger value="hero">Hero Products</TabsTrigger>
-          <TabsTrigger value="vsc">VSC Coverage</TabsTrigger>
-        </TabsList>
+      <div className="flex flex-col sm:flex-row gap-4">
+        <div className="flex-1">
+          <Input
+            placeholder="Search products by name or code..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="w-full"
+          />
+        </div>
+        <Select value={filterCategory} onValueChange={setFilterCategory}>
+          <SelectTrigger className="w-[200px]">
+            <SelectValue placeholder="Filter by category" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Categories</SelectItem>
+            <SelectItem value="home_protection">Home Protection</SelectItem>
+            <SelectItem value="auto_protection">Auto Protection</SelectItem>
+            <SelectItem value="deductible_reimbursement">Deductible Reimbursement</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
 
-        <TabsContent value="hero" className="space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {Object.values(heroProducts).map((product, index) => (
-              <motion.div
-                key={product.id}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: index * 0.1 }}
-              >
-                <Card className="hover:shadow-lg transition-shadow duration-200">
-                  <CardHeader>
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center space-x-2">
-                        <Package className="w-5 h-5 text-blue-500" />
-                        <CardTitle className="text-lg">{product.name}</CardTitle>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        
-                        <Badge variant={product.active ? 'default' : 'secondary'}>
-                          {product.active ? 'Active' : 'Inactive'}
+      <div className="space-y-6">
+        <h2 className="text-xl font-semibold">Hero Products ({filteredProducts.length})</h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {filteredProducts.map((product, index) => (
+            <motion.div
+              key={product.id}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: index * 0.1 }}
+            >
+              <Card className="hover:shadow-lg transition-shadow duration-200">
+                <CardHeader>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-2">
+                      <Package className="w-5 h-5 text-blue-500" />
+                      <CardTitle className="text-lg">{product.name}</CardTitle>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <Switch
+                        checked={product.active}
+                        onCheckedChange={() => toggleProductStatus(product.product_code)}
+                      />
+                      <Badge variant={product.active ? 'default' : 'secondary'}>
+                        {product.active ? 'Active' : 'Inactive'}
+                      </Badge>
+                    </div>
+                  </div>
+                  <CardDescription>{product.description}</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div>
+                    <Label className="text-sm font-medium">Product Code</Label>
+                    <p className="text-sm text-gray-600 dark:text-gray-400 font-mono">
+                      {product.product_code}
+                    </p>
+                  </div>
+
+                  <div>
+                    <Label className="text-sm font-medium">Category</Label>
+                    <p className="text-sm text-gray-600 dark:text-gray-400 capitalize">
+                      {product.category?.replace('_', ' ')}
+                    </p>
+                  </div>
+                  
+                  <div>
+                    <Label className="text-sm font-medium">Base Price</Label>
+                    <div className="flex items-center space-x-2 mt-1">
+                      <DollarSign className="w-4 h-4 text-green-500" />
+                      <span className="text-lg font-semibold">${product.base_price}</span>
+                    </div>
+                  </div>
+
+                  <div>
+                    <Label className="text-sm font-medium">Price Range</Label>
+                    <div className="flex items-center space-x-2 mt-1">
+                      <span className="text-sm">
+                        ${product.min_price} - ${product.max_price}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div>
+                    <Label className="text-sm font-medium">Available Terms</Label>
+                    <div className="flex flex-wrap gap-1 mt-1">
+                      {(product.terms_available || []).map((term) => (
+                        <Badge key={term} variant="outline" className="text-xs">
+                          {term} year{term > 1 ? 's' : ''}
                         </Badge>
-                      </div>
+                      ))}
                     </div>
-                    <CardDescription>{product.description}</CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div>
-                      <Label className="text-sm font-medium">Category</Label>
-                      <p className="text-sm text-gray-600 dark:text-gray-400 capitalize">
-                        {product.category?.replace('_', ' ')}
-                      </p>
-                    </div>
-                    
-                    <div>
-                      <Label className="text-sm font-medium">Pricing Range</Label>
-                      <div className="flex items-center space-x-2 mt-1">
-                        <DollarSign className="w-4 h-4 text-green-500" />
-                        <span className="text-sm">
-                          ${Math.min(...Object.values(product.pricing || {}).map(p => p.base_price))} - 
-                          ${Math.max(...Object.values(product.pricing || {}).map(p => p.base_price))}
-                        </span>
-                      </div>
-                    </div>
+                  </div>
 
-                    <div>
-                      <Label className="text-sm font-medium">Features</Label>
-                      <div className="flex flex-wrap gap-1 mt-1">
-                        {(product.features || []).slice(0, 3).map((feature, idx) => (
-                          <Badge key={idx} variant="outline" className="text-xs">
-                            {feature}
-                          </Badge>
-                        ))}
-                        {(product.features || []).length > 3 && (
-                          <Badge variant="outline" className="text-xs">
-                            +{(product.features || []).length - 3} more
-                          </Badge>
-                        )}
-                      </div>
-                    </div>
-
-                    <div className="flex space-x-2 pt-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setEditingProduct(product)}
-                        className="flex-1"
-                      >
-                        <Edit className="w-4 h-4 mr-1" />
-                        Edit
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="text-red-600 hover:text-red-700"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
-              </motion.div>
-            ))}
-          </div>
-        </TabsContent>
-
-        <TabsContent value="vsc" className="space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {Object.values(vscProducts).map((product, index) => (
-              <motion.div
-                key={product.id}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: index * 0.1 }}
-              >
-                <Card className="hover:shadow-lg transition-shadow duration-200">
-                  <CardHeader>
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center space-x-2">
-                        <Settings className="w-5 h-5 text-purple-500" />
-                        <CardTitle className="text-lg">{product.name}</CardTitle>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <Switch
-                          checked={product.active}
-                          onCheckedChange={() => toggleProductStatus('vsc', product.id)}
-                        />
-                        <Badge variant={product.active ? 'default' : 'secondary'}>
-                          {product.active ? 'Active' : 'Inactive'}
+                  <div>
+                    <Label className="text-sm font-medium">Features</Label>
+                    <div className="flex flex-wrap gap-1 mt-1">
+                      {(product.features || []).slice(0, 3).map((feature, idx) => (
+                        <Badge key={idx} variant="outline" className="text-xs">
+                          {feature}
                         </Badge>
-                      </div>
+                      ))}
+                      {(product.features || []).length > 3 && (
+                        <Badge variant="outline" className="text-xs">
+                          +{(product.features || []).length - 3} more
+                        </Badge>
+                      )}
                     </div>
-                    <CardDescription>{product.description}</CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div>
-                      <Label className="text-sm font-medium">Coverage Items</Label>
-                      <div className="flex flex-wrap gap-1 mt-1">
-                        {(product.coverage_items || []).slice(0, 3).map((item, idx) => (
-                          <Badge key={idx} variant="outline" className="text-xs">
-                            {item}
-                          </Badge>
-                        ))}
-                        {(product.coverage_items || []).length > 3 && (
-                          <Badge variant="outline" className="text-xs">
-                            +{(product.coverage_items || []).length - 3} more
-                          </Badge>
-                        )}
-                      </div>
-                    </div>
+                  </div>
 
-                    <div>
-                      <Label className="text-sm font-medium">Term Options</Label>
-                      <p className="text-sm text-gray-600 dark:text-gray-400">
-                        {(product.term_options || []).join(', ')} months
-                      </p>
-                    </div>
+                  <div className="flex space-x-2 pt-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setEditingProduct(product)}
+                      className="flex-1"
+                    >
+                      <Edit className="w-4 h-4 mr-1" />
+                      Edit
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        setSelectedProduct(product)
+                        setShowPricingDialog(true)
+                      }}
+                      className="flex-1"
+                    >
+                      <Calculator className="w-4 h-4 mr-1" />
+                      Pricing
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => deleteProduct(product.product_code)}
+                      className="text-red-600 hover:text-red-700"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            </motion.div>
+          ))}
+        </div>
 
-                    <div>
-                      <Label className="text-sm font-medium">Deductible Options</Label>
-                      <p className="text-sm text-gray-600 dark:text-gray-400">
-                        ${(product.deductible_options || []).join(', $')}
-                      </p>
-                    </div>
-
-                    <div className="flex space-x-2 pt-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="flex-1"
-                      >
-                        <Edit className="w-4 h-4 mr-1" />
-                        Edit
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="text-red-600 hover:text-red-700"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
-              </motion.div>
-            ))}
+        {filteredProducts.length === 0 && (
+          <div className="text-center py-12">
+            <Package className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+            <h3 className="text-lg font-medium text-gray-900 mb-2">No products found</h3>
+            <p className="text-gray-500 mb-4">
+              {searchTerm || filterCategory !== 'all' 
+                ? 'Try adjusting your search or filter criteria'
+                : 'Get started by creating your first Hero product'
+              }
+            </p>
+            {!searchTerm && filterCategory === 'all' && (
+              <Button onClick={() => setShowCreateDialog(true)}>
+                <Plus className="w-4 h-4 mr-2" />
+                Add First Product
+              </Button>
+            )}
           </div>
-        </TabsContent>
-      </Tabs>
+        )}
+      </div>
 
-      {/* Edit Product Dialog */}
       {editingProduct && (
         <Dialog open={!!editingProduct} onOpenChange={() => setEditingProduct(null)}>
           <DialogContent className="max-w-2xl">
             <DialogHeader>
               <DialogTitle>Edit Product</DialogTitle>
               <DialogDescription>
-                Update product information and pricing
+                Update product information and settings
               </DialogDescription>
             </DialogHeader>
             <ProductForm
@@ -523,54 +498,101 @@ export default function ProductManagement() {
           </DialogContent>
         </Dialog>
       )}
+
+      {showPricingDialog && selectedProduct && (
+        <Dialog open={showPricingDialog} onOpenChange={setShowPricingDialog}>
+          <DialogContent className="max-w-6xl max-h-[90vh] overflow-hidden flex flex-col">
+            <DialogHeader className="flex-shrink-0">
+              <DialogTitle>Manage Pricing - {selectedProduct.name}</DialogTitle>
+              <DialogDescription>
+                Update pricing for different terms and customer types
+              </DialogDescription>
+            </DialogHeader>
+            <div className="flex-1 overflow-y-auto pr-2">
+              <PricingForm
+                product={selectedProduct}
+                onSave={updateProductPricing}
+                onCancel={() => {
+                  setShowPricingDialog(false)
+                  setSelectedProduct(null)
+                }}
+              />
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
     </div>
   )
 }
 
-// Product form component
 function ProductForm({ product, onSave, onCancel }) {
   const [formData, setFormData] = useState({
-    id: product?.id || '',
+    product_code: product?.product_code || '',
     name: product?.name || '',
-    category: product?.category || '',
     description: product?.description || '',
+    base_price: product?.base_price || '',
     active: product?.active ?? true,
-    features: product?.features?.join('\n') || '',
-    tax_rate: product?.tax_rate || 0.08,
-    wholesale_discount: product?.wholesale_discount || 0.15
+    features: product?.features?.join('\n') || ''
   })
+
+  const [errors, setErrors] = useState({})
+
+  const validateForm = () => {
+    const newErrors = {}
+    
+    if (!formData.product_code.trim()) {
+      newErrors.product_code = 'Product code is required'
+    }
+    
+    if (!formData.name.trim()) {
+      newErrors.name = 'Product name is required'
+    }
+    
+    if (!formData.base_price || isNaN(formData.base_price) || parseFloat(formData.base_price) <= 0) {
+      newErrors.base_price = 'Valid base price is required'
+    }
+    
+    setErrors(newErrors)
+    return Object.keys(newErrors).length === 0
+  }
 
   const handleSubmit = (e) => {
     e.preventDefault()
-    const productData = {
-      ...formData,
-      features: formData.features.split('\n').filter(f => f.trim())
+    if (validateForm()) {
+      const productData = {
+        ...formData,
+        base_price: parseFloat(formData.base_price),
+        features: formData.features.split('\n').filter(f => f.trim())
+      }
+      onSave(productData)
     }
-    onSave(productData)
   }
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       <div className="grid grid-cols-2 gap-4">
         <div>
-          <Label htmlFor="id">Product ID</Label>
+          <Label htmlFor="product_code">Product Code *</Label>
           <Input
-            id="id"
-            value={formData.id}
-            onChange={(e) => setFormData(prev => ({ ...prev, id: e.target.value }))}
-            placeholder="product_id"
-            required
+            id="product_code"
+            value={formData.product_code}
+            onChange={(e) => setFormData(prev => ({ ...prev, product_code: e.target.value.toUpperCase() }))}
+            placeholder="HOME_PROTECTION_PLAN"
+            disabled={!!product}
+            className={errors.product_code ? 'border-red-500' : ''}
           />
+          {errors.product_code && <p className="text-red-500 text-sm mt-1">{errors.product_code}</p>}
         </div>
         <div>
-          <Label htmlFor="name">Product Name</Label>
+          <Label htmlFor="name">Product Name *</Label>
           <Input
             id="name"
             value={formData.name}
             onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
-            placeholder="Product Name"
-            required
+            placeholder="Home Protection Plan"
+            className={errors.name ? 'border-red-500' : ''}
           />
+          {errors.name && <p className="text-red-500 text-sm mt-1">{errors.name}</p>}
         </div>
       </div>
 
@@ -580,9 +602,27 @@ function ProductForm({ product, onSave, onCancel }) {
           id="description"
           value={formData.description}
           onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
-          placeholder="Product description"
+          placeholder="Comprehensive home protection coverage"
           rows={3}
         />
+      </div>
+
+      <div>
+        <Label htmlFor="base_price">Base Price (USD) *</Label>
+        <div className="relative">
+          <DollarSign className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+          <Input
+            id="base_price"
+            type="number"
+            step="0.01"
+            min="0"
+            value={formData.base_price}
+            onChange={(e) => setFormData(prev => ({ ...prev, base_price: e.target.value }))}
+            placeholder="199.00"
+            className={`pl-10 ${errors.base_price ? 'border-red-500' : ''}`}
+          />
+        </div>
+        {errors.base_price && <p className="text-red-500 text-sm mt-1">{errors.base_price}</p>}
       </div>
 
       <div>
@@ -591,36 +631,9 @@ function ProductForm({ product, onSave, onCancel }) {
           id="features"
           value={formData.features}
           onChange={(e) => setFormData(prev => ({ ...prev, features: e.target.value }))}
-          placeholder="Feature 1&#10;Feature 2&#10;Feature 3"
+          placeholder="HVAC coverage&#10;Plumbing protection&#10;24/7 support"
           rows={4}
         />
-      </div>
-
-      <div className="grid grid-cols-2 gap-4">
-        <div>
-          <Label htmlFor="tax_rate">Tax Rate</Label>
-          <Input
-            id="tax_rate"
-            type="number"
-            step="0.01"
-            min="0"
-            max="1"
-            value={formData.tax_rate}
-            onChange={(e) => setFormData(prev => ({ ...prev, tax_rate: parseFloat(e.target.value) }))}
-          />
-        </div>
-        <div>
-          <Label htmlFor="wholesale_discount">Wholesale Discount</Label>
-          <Input
-            id="wholesale_discount"
-            type="number"
-            step="0.01"
-            min="0"
-            max="1"
-            value={formData.wholesale_discount}
-            onChange={(e) => setFormData(prev => ({ ...prev, wholesale_discount: parseFloat(e.target.value) }))}
-          />
-        </div>
       </div>
 
       <div className="flex items-center space-x-2">
@@ -646,3 +659,308 @@ function ProductForm({ product, onSave, onCancel }) {
   )
 }
 
+function PricingForm({ product, onSave, onCancel }) {
+  const [pricingData, setPricingData] = useState(() => {
+    const initialData = {
+      base_price: product.base_price || 0,
+      pricing: {}
+    }
+    
+    const availableTerms = product.terms_available || [1, 2, 3, 4, 5]
+    availableTerms.forEach(term => {
+      if (product.pricing && product.pricing[term]) {
+        initialData.pricing[term] = {
+          retail: product.pricing[term].base_price || product.base_price,
+          wholesale: (product.pricing[term].base_price || product.base_price) * 0.85
+        }
+      } else {
+        const multiplier = getDefaultMultiplier(term)
+        initialData.pricing[term] = {
+          retail: Math.round(product.base_price * multiplier),
+          wholesale: Math.round(product.base_price * multiplier * 0.85)
+        }
+      }
+    })
+    
+    return initialData
+  })
+
+  function getDefaultMultiplier(term) {
+    const multipliers = { 1: 1.0, 2: 1.8, 3: 2.5, 4: 3.2, 5: 3.8 }
+    return multipliers[term] || 1.0
+  }
+
+  const updatePricing = (term, customerType, value) => {
+    const numValue = parseFloat(value) || 0
+    setPricingData(prev => ({
+      ...prev,
+      pricing: {
+        ...prev.pricing,
+        [term]: {
+          ...prev.pricing[term],
+          [customerType]: numValue
+        }
+      }
+    }))
+  }
+
+  const updateBasePrice = (value) => {
+    const numValue = parseFloat(value) || 0
+    setPricingData(prev => ({
+      ...prev,
+      base_price: numValue
+    }))
+    
+    const availableTerms = product.terms_available || [1, 2, 3, 4, 5]
+    availableTerms.forEach(term => {
+      const multiplier = getDefaultMultiplier(term)
+      const retailPrice = Math.round(numValue * multiplier)
+      const wholesalePrice = Math.round(retailPrice * 0.85)
+      
+      setPricingData(prev => ({
+        ...prev,
+        pricing: {
+          ...prev.pricing,
+          [term]: {
+            retail: retailPrice,
+            wholesale: wholesalePrice
+          }
+        }
+      }))
+    })
+  }
+
+  const calculatePreview = (term, customerType, price) => {
+    const basePrice = parseFloat(price) || 0
+    const adminFee = 25
+    const taxRate = 0.08
+    
+    const subtotal = basePrice + adminFee
+    const tax = subtotal * taxRate
+    const total = subtotal + tax
+    const monthly = total / (term * 12)
+    
+    return {
+      subtotal: subtotal.toFixed(2),
+      tax: tax.toFixed(2),
+      total: total.toFixed(2),
+      monthly: monthly.toFixed(2)
+    }
+  }
+
+  const handleSubmit = (e) => {
+    e.preventDefault()
+    
+    const formattedPricing = {
+      base_price: pricingData.base_price,
+      pricing: {}
+    }
+    
+    Object.entries(pricingData.pricing).forEach(([term, prices]) => {
+      const retailMultiplier = prices.retail / pricingData.base_price
+      const wholesaleMultiplier = prices.wholesale / pricingData.base_price
+      
+      formattedPricing.pricing[term] = {
+        retail: retailMultiplier,
+        wholesale: wholesaleMultiplier
+      }
+    })
+    
+    onSave(product.product_code, formattedPricing)
+  }
+
+  const availableTerms = product.terms_available || [1, 2, 3, 4, 5]
+
+  return (
+    <div className="space-y-6">
+      <form onSubmit={handleSubmit} className="space-y-6">
+        {/* Base Pricing Section - Sticky */}
+        <div className="border rounded-lg p-4 bg-blue-50 dark:bg-blue-900/20 sticky top-0 z-10">
+          <h3 className="text-lg font-semibold mb-3">Base Pricing</h3>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <div>
+              <Label htmlFor="base_price">Base Price (1 Year)</Label>
+              <div className="relative">
+                <DollarSign className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                <Input
+                  id="base_price"
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  value={pricingData.base_price}
+                  onChange={(e) => updateBasePrice(e.target.value)}
+                  className="pl-10"
+                />
+              </div>
+              <p className="text-sm text-gray-500 mt-1">
+                This will auto-calculate pricing for all terms
+              </p>
+            </div>
+            <div className="flex items-center">
+              <Alert className="w-full">
+                <AlertCircle className="h-4 w-4" />
+                <AlertTitle>Auto-Calculate</AlertTitle>
+                <AlertDescription className="text-sm">
+                  Changing the base price will update all term pricing using standard multipliers.
+                </AlertDescription>
+              </Alert>
+            </div>
+          </div>
+        </div>
+
+        {/* Term-based Pricing Section */}
+        <div className="space-y-4">
+          <h3 className="text-lg font-semibold">Term-based Pricing</h3>
+          <div className="space-y-6">
+            {availableTerms.map(term => (
+              <div key={term} className="border rounded-lg p-4 bg-white dark:bg-gray-800">
+                <h4 className="font-medium mb-4 text-lg border-b pb-2">
+                  {term} Year{term > 1 ? 's' : ''} Coverage
+                </h4>
+                <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+                  {/* Retail Pricing */}
+                  <div className="space-y-3">
+                    <div>
+                      <Label className="text-sm font-medium">Retail Price</Label>
+                      <div className="relative mt-1">
+                        <DollarSign className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                        <Input
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          value={pricingData.pricing[term]?.retail || 0}
+                          onChange={(e) => updatePricing(term, 'retail', e.target.value)}
+                          className="pl-10"
+                        />
+                      </div>
+                    </div>
+                    <div className="bg-gray-50 dark:bg-gray-700 p-3 rounded-md">
+                      <div className="font-medium mb-2 text-sm">Customer Pays:</div>
+                      {(() => {
+                        const preview = calculatePreview(term, 'retail', pricingData.pricing[term]?.retail)
+                        return (
+                          <div className="space-y-1 text-sm">
+                            <div className="flex justify-between">
+                              <span>Base Price:</span>
+                              <span className="font-mono">${pricingData.pricing[term]?.retail || 0}</span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span>Admin Fee:</span>
+                              <span className="font-mono">$25.00</span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span>Tax (8%):</span>
+                              <span className="font-mono">${preview.tax}</span>
+                            </div>
+                            <hr className="my-1" />
+                            <div className="flex justify-between font-bold">
+                              <span>Total:</span>
+                              <span className="font-mono">${preview.total}</span>
+                            </div>
+                            <div className="flex justify-between text-blue-600 dark:text-blue-400">
+                              <span>Monthly:</span>
+                              <span className="font-mono">${preview.monthly}</span>
+                            </div>
+                          </div>
+                        )
+                      })()}
+                    </div>
+                  </div>
+
+                  {/* Wholesale Pricing */}
+                  <div className="space-y-3">
+                    <div>
+                      <Label className="text-sm font-medium">Wholesale Price (15% discount)</Label>
+                      <div className="relative mt-1">
+                        <DollarSign className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                        <Input
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          value={pricingData.pricing[term]?.wholesale || 0}
+                          onChange={(e) => updatePricing(term, 'wholesale', e.target.value)}
+                          className="pl-10"
+                        />
+                      </div>
+                    </div>
+                    <div className="bg-orange-50 dark:bg-orange-900/30 p-3 rounded-md">
+                      <div className="font-medium mb-2 text-sm">Reseller Pays:</div>
+                      {(() => {
+                        const preview = calculatePreview(term, 'wholesale', pricingData.pricing[term]?.wholesale)
+                        const retailPreview = calculatePreview(term, 'retail', pricingData.pricing[term]?.retail)
+                        const savings = (parseFloat(retailPreview.total) - parseFloat(preview.total)).toFixed(2)
+                        return (
+                          <div className="space-y-1 text-sm">
+                            <div className="flex justify-between">
+                              <span>Base Price:</span>
+                              <span className="font-mono">${pricingData.pricing[term]?.wholesale || 0}</span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span>Admin Fee:</span>
+                              <span className="font-mono">$25.00</span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span>Tax (8%):</span>
+                              <span className="font-mono">${preview.tax}</span>
+                            </div>
+                            <hr className="my-1" />
+                            <div className="flex justify-between font-bold">
+                              <span>Total:</span>
+                              <span className="font-mono">${preview.total}</span>
+                            </div>
+                            <div className="flex justify-between text-orange-600 dark:text-orange-400">
+                              <span>Savings:</span>
+                              <span className="font-mono">${savings}</span>
+                            </div>
+                          </div>
+                        )
+                      })()}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Pricing Summary */}
+        <div className="border rounded-lg p-4 bg-green-50 dark:bg-green-900/20">
+          <h3 className="text-lg font-semibold mb-3">Pricing Summary</h3>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 text-sm">
+            <div>
+              <div className="font-medium text-gray-700 dark:text-gray-300">Price Range</div>
+              <div className="font-mono">
+                ${Math.min(...Object.values(pricingData.pricing).map(p => p.retail))} - 
+                ${Math.max(...Object.values(pricingData.pricing).map(p => p.retail))}
+              </div>
+            </div>
+            <div>
+              <div className="font-medium text-gray-700 dark:text-gray-300">Available Terms</div>
+              <div>{availableTerms.join(', ')} year{availableTerms.length > 1 ? 's' : ''}</div>
+            </div>
+            <div>
+              <div className="font-medium text-gray-700 dark:text-gray-300">Wholesale Discount</div>
+              <div>15% off retail</div>
+            </div>
+            <div>
+              <div className="font-medium text-gray-700 dark:text-gray-300">Additional Fees</div>
+              <div>$25 admin + 8% tax</div>
+            </div>
+          </div>
+        </div>
+
+        {/* Action Buttons - Sticky at bottom */}
+        <div className="flex space-x-3 pt-4 border-t bg-white dark:bg-gray-800 sticky bottom-0 pb-4">
+          <Button type="submit" className="flex-1">
+            <Save className="w-4 h-4 mr-2" />
+            Update Pricing
+          </Button>
+          <Button type="button" variant="outline" onClick={onCancel} className="flex-1">
+            <X className="w-4 h-4 mr-2" />
+            Cancel
+          </Button>
+        </div>
+      </form>
+    </div>
+  )
+}
