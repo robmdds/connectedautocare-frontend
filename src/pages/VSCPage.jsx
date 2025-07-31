@@ -1,75 +1,232 @@
-import React from 'react'
+import React, { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { Car, Shield, CheckCircle, ArrowRight, Star, DollarSign } from 'lucide-react'
+import { Car, Shield, CheckCircle, ArrowRight, Star, DollarSign, Loader2, AlertCircle } from 'lucide-react'
 import { Button } from '../components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card'
 import { Badge } from '../components/ui/badge'
+import { Alert, AlertDescription } from '../components/ui/alert'
+
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
 const VSCPage = () => {
-  const coverageLevels = [
-    {
+  const [vscData, setVscData] = useState({
+    coverageLevels: {},
+    vehicleClasses: {},
+    termOptions: {},
+    deductibleOptions: {},
+    loading: true,
+    error: null
+  });
+
+  const [healthStatus, setHealthStatus] = useState({
+    database_integration: false,
+    pdf_rates_available: false
+  });
+
+  // Fetch VSC data from backend
+  useEffect(() => {
+    const fetchVSCData = async () => {
+      try {
+        setVscData(prev => ({ ...prev, loading: true, error: null }));
+
+        // Fetch coverage options from your API
+        const [coverageResponse, healthResponse] = await Promise.all([
+          fetch(`${API_BASE_URL}/api/vsc/coverage-options`),
+          fetch(`${API_BASE_URL}/api/vsc/health`)
+        ]);
+
+        if (!coverageResponse.ok) {
+          throw new Error(`Failed to fetch coverage options: ${coverageResponse.status}`);
+        }
+
+        const coverageData = await coverageResponse.json();
+        const healthData = healthResponse.ok ? await healthResponse.json() : {};
+
+        // Handle array response format [data, statusCode] or direct object
+        let apiData;
+        if (Array.isArray(coverageData)) {
+          // Response is [responseData, statusCode]
+          apiData = coverageData[0];
+        } else {
+          apiData = coverageData;
+        }
+
+        // Extract data from the nested structure
+        const data = apiData.success && apiData.data ? apiData.data : apiData;
+        
+        setVscData({
+          coverageLevels: data.coverage_levels || {},
+          vehicleClasses: data.vehicle_classes || {},
+          termOptions: data.term_options || {},
+          deductibleOptions: data.deductible_options || {},
+          loading: false,
+          error: null
+        });
+
+        // Handle health data response format
+        let healthInfo;
+        if (Array.isArray(healthData)) {
+          healthInfo = healthData[0];
+        } else {
+          healthInfo = healthData;
+        }
+        
+        setHealthStatus({
+          database_integration: healthInfo?.database_integration?.status === 'connected' || 
+                               healthInfo?.status === 'healthy',
+          pdf_rates_available: healthInfo?.database_integration?.pdf_rates_available || 
+                              healthInfo?.enhanced_features?.database_rates || false
+        });
+
+      } catch (error) {
+        console.error('Error fetching VSC data:', error);
+        setVscData(prev => ({
+          ...prev,
+          loading: false,
+          error: error.message
+        }));
+        
+        // Set fallback data
+        setVscData(prev => ({
+          ...prev,
+          coverageLevels: getFallbackCoverageLevels(),
+          vehicleClasses: getFallbackVehicleClasses(),
+          termOptions: { available_terms: [12, 24, 36, 48, 60, 72] },
+          deductibleOptions: { available_deductibles: [0, 50, 100, 200, 500, 1000] }
+        }));
+      }
+    };
+
+    fetchVSCData();
+  }, []);
+
+  // Fallback data in case API fails
+  const getFallbackCoverageLevels = () => ({
+    silver: {
       name: "Silver Coverage",
-      description: "Essential protection for your vehicle's most important components",
-      features: [
+      description: "Essential protection for your vehicle's most important components"
+    },
+    gold: {
+      name: "Gold Coverage", 
+      description: "Comprehensive protection with enhanced coverage options"
+    },
+    platinum: {
+      name: "Platinum Coverage",
+      description: "Maximum protection with premium benefits and services"
+    }
+  });
+
+  const getFallbackVehicleClasses = () => ({
+    A: {
+      description: "Class A - Most Reliable",
+      example_makes: ["Honda", "Toyota", "Nissan", "Hyundai", "Kia"]
+    },
+    B: {
+      description: "Class B - Moderate Risk",
+      example_makes: ["Ford", "Chevrolet", "Buick", "Chrysler", "Dodge"]
+    },
+    C: {
+      description: "Class C - Higher Risk", 
+      example_makes: ["BMW", "Mercedes-Benz", "Audi", "Cadillac", "Lincoln"]
+    }
+  });
+
+  // Transform API data to component format
+  const transformCoverageLevels = () => {
+    const levels = vscData.coverageLevels;
+    const baseRates = {
+      silver: "$1,500 - $2,500",
+      gold: "$1,800 - $2,800", 
+      platinum: "$2,200 - $3,500"
+    };
+
+    return Object.entries(levels).map(([key, level]) => ({
+      name: level.name || `${key.charAt(0).toUpperCase() + key.slice(1)} Coverage`,
+      description: level.description || `${key.charAt(0).toUpperCase() + key.slice(1)} level protection`,
+      features: getCoverageFeatures(key),
+      priceRange: baseRates[key] || "Contact for pricing",
+      color: getCoverageColor(key),
+      popular: key === 'gold'
+    }));
+  };
+
+  const getCoverageFeatures = (level) => {
+    const features = {
+      silver: [
         "Engine coverage",
-        "Transmission protection",
+        "Transmission protection", 
         "Basic electrical systems",
         "24/7 roadside assistance",
         "Nationwide coverage"
       ],
-      priceRange: "$800 - $1,600",
-      color: "bg-gray-500"
-    },
-    {
-      name: "Gold Coverage",
-      description: "Comprehensive protection with enhanced coverage options",
-      features: [
+      gold: [
         "All Silver benefits",
         "Air conditioning system",
-        "Power steering",
+        "Power steering", 
         "Fuel system coverage",
         "Rental car reimbursement"
       ],
-      priceRange: "$1,200 - $2,200",
-      color: "bg-yellow-500",
-      popular: true
-    },
-    {
-      name: "Platinum Coverage",
-      description: "Maximum protection with premium benefits and services",
-      features: [
+      platinum: [
         "All Gold benefits",
         "Complete electrical coverage",
         "Advanced diagnostics",
-        "Trip interruption coverage",
+        "Trip interruption coverage", 
         "Concierge services"
-      ],
-      priceRange: "$1,600 - $2,800",
-      color: "bg-purple-500"
-    }
-  ]
+      ]
+    };
+    return features[level] || ["Comprehensive vehicle protection"];
+  };
 
-  const vehicleClasses = [
+  const getCoverageColor = (level) => {
+    const colors = {
+      silver: "bg-gray-500",
+      gold: "bg-yellow-500",
+      platinum: "bg-purple-500"
+    };
+    return colors[level] || "bg-blue-500";
+  };
+
+  const transformVehicleClasses = () => {
+    const classes = vscData.vehicleClasses;
+    const rateDescriptions = {
+      A: "Lowest Rates",
+      B: "Standard Rates", 
+      C: "Premium Rates"
+    };
+
+    return Object.entries(classes).map(([key, classInfo]) => ({
+      class: `Class ${key}`,
+      description: classInfo.description || `Class ${key} vehicles`,
+      makes: classInfo.example_makes || [],
+      rateMultiplier: rateDescriptions[key] || "Standard Rates"
+    }));
+  };
+
+  // Static testimonials (these would typically come from a CMS or separate API)
+  const testimonials = [
     {
-      class: "Class A",
-      description: "Most Reliable Vehicles",
-      makes: ["Honda", "Toyota", "Nissan", "Hyundai", "Kia", "Lexus", "Mazda", "Subaru"],
-      rateMultiplier: "Lowest Rates"
+      name: "David Thompson",
+      vehicle: "2019 Honda Accord",
+      content: "My transmission failed at 85,000 miles. VSC covered the entire $4,200 repair. Best investment I ever made!",
+      rating: 5,
+      savings: "$4,200"
     },
     {
-      class: "Class B", 
-      description: "Moderate Risk Vehicles",
-      makes: ["Ford", "Chevrolet", "Buick", "Chrysler", "Dodge", "GMC", "Jeep"],
-      rateMultiplier: "Standard Rates"
+      name: "Maria Garcia", 
+      vehicle: "2020 Ford Explorer",
+      content: "The air conditioning system went out in summer. Quick approval and repair - no hassle at all.",
+      rating: 5,
+      savings: "$1,800"
     },
     {
-      class: "Class C",
-      description: "Higher Risk Vehicles", 
-      makes: ["BMW", "Mercedes-Benz", "Audi", "Cadillac", "Lincoln", "Volkswagen", "Volvo"],
-      rateMultiplier: "Premium Rates"
+      name: "Robert Chen",
+      vehicle: "2018 BMW X5", 
+      content: "Multiple electrical issues covered under my Platinum plan. The peace of mind is worth every penny.",
+      rating: 5,
+      savings: "$3,500"
     }
-  ]
+  ];
 
   const benefits = [
     {
@@ -77,7 +234,7 @@ const VSCPage = () => {
       description: "Get service at any ASE-certified repair facility across the United States"
     },
     {
-      title: "24/7 Roadside Assistance",
+      title: "24/7 Roadside Assistance", 
       description: "Emergency roadside help whenever and wherever you need it"
     },
     {
@@ -93,37 +250,52 @@ const VSCPage = () => {
       description: "Transfer your contract to a new owner to help maintain vehicle value"
     },
     {
-      title: "No Deductible Options",
-      description: "Choose from $0, $100, $200, or $500 deductible options"
+      title: "Flexible Deductible Options",
+      description: `Choose from ${vscData.deductibleOptions.available_deductibles?.length || 6} deductible options`
     }
-  ]
+  ];
 
-  const testimonials = [
-    {
-      name: "David Thompson",
-      vehicle: "2019 Honda Accord",
-      content: "My transmission failed at 85,000 miles. VSC covered the entire $4,200 repair. Best investment I ever made!",
-      rating: 5,
-      savings: "$4,200"
-    },
-    {
-      name: "Maria Garcia",
-      vehicle: "2020 Ford Explorer",
-      content: "The air conditioning system went out in summer. Quick approval and repair - no hassle at all.",
-      rating: 5,
-      savings: "$1,800"
-    },
-    {
-      name: "Robert Chen",
-      vehicle: "2018 BMW X5",
-      content: "Multiple electrical issues covered under my Platinum plan. The peace of mind is worth every penny.",
-      rating: 5,
-      savings: "$3,500"
-    }
-  ]
+  if (vscData.loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center space-y-4">
+          <Loader2 className="h-8 w-8 animate-spin mx-auto" />
+          <p className="text-lg">Loading VSC information...</p>
+        </div>
+      </div>
+    );
+  }
+
+  const coverageLevels = transformCoverageLevels();
+  const vehicleClasses = transformVehicleClasses();
+  const maxTerm = Math.max(...(vscData.termOptions.available_terms || [72]));
+  const totalCoverageLevels = Object.keys(vscData.coverageLevels).length || 3;
 
   return (
     <div className="min-h-screen">
+      {/* Error Alert */}
+      {vscData.error && (
+        <Alert className="mx-4 mt-4 border-yellow-200 bg-yellow-50">
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription>
+            Using cached data due to connection issue. Some information may not be current.
+            {healthStatus.database_integration && (
+              <span className="text-green-600 ml-2">✓ Database connected</span>
+            )}
+          </AlertDescription>
+        </Alert>
+      )}
+
+      {/* Database Status Indicator */}
+      {!vscData.error && healthStatus.database_integration && (
+        <div className="bg-green-50 border-b border-green-200 py-2">
+          <div className="max-w-7xl mx-auto px-4 text-center text-sm text-green-700">
+            ✓ Live pricing from database
+            {healthStatus.pdf_rates_available && " • PDF rates active"}
+          </div>
+        </div>
+      )}
+
       {/* Hero Section */}
       <section className="hero-gradient text-white py-20">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -160,11 +332,11 @@ const VSCPage = () => {
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-8 pt-12">
               <div className="text-center">
-                <div className="text-3xl font-bold">3</div>
+                <div className="text-3xl font-bold">{totalCoverageLevels}</div>
                 <div className="text-white/80">Coverage Levels</div>
               </div>
               <div className="text-center">
-                <div className="text-3xl font-bold">72</div>
+                <div className="text-3xl font-bold">{maxTerm}</div>
                 <div className="text-white/80">Months Max Term</div>
               </div>
               <div className="text-center">
@@ -229,7 +401,7 @@ const VSCPage = () => {
                     </ul>
                     <Button asChild className="w-full">
                       <Link to={`/quote?coverage=${level.name.toLowerCase().replace(' ', '_')}`}>
-                        Get {level.name} Quote
+                        Get {level.name.split(' ')[0]} Quote
                         <ArrowRight className="ml-2 h-4 w-4" />
                       </Link>
                     </Button>
@@ -277,13 +449,18 @@ const VSCPage = () => {
                   </CardHeader>
                   <CardContent>
                     <div className="space-y-2">
-                      <h4 className="font-semibold">Included Makes:</h4>
+                      <h4 className="font-semibold">Example Makes:</h4>
                       <div className="flex flex-wrap gap-2">
-                        {vehicleClass.makes.map((make) => (
+                        {vehicleClass.makes.slice(0, 8).map((make) => (
                           <Badge key={make} variant="outline" className="text-xs">
                             {make}
                           </Badge>
                         ))}
+                        {vehicleClass.makes.length > 8 && (
+                          <Badge variant="outline" className="text-xs">
+                            +{vehicleClass.makes.length - 8} more
+                          </Badge>
+                        )}
                       </div>
                     </div>
                   </CardContent>
@@ -423,4 +600,3 @@ const VSCPage = () => {
 }
 
 export default VSCPage
-

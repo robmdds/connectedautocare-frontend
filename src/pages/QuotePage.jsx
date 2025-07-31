@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react'
+import { useLocation, useSearchParams } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { Calculator, Car, Home, Shield, DollarSign, CheckCircle, AlertCircle, Loader, Search } from 'lucide-react'
 import { Button } from '../components/ui/button'
@@ -11,6 +12,8 @@ import { Badge } from '../components/ui/badge'
 import { heroAPI, vscAPI, formatCurrency, validateQuoteData, handleAPIError } from '../lib/api'
 
 const QuotePage = () => {
+  const location = useLocation()
+  const [searchParams] = useSearchParams()
   const [activeTab, setActiveTab] = useState('hero')
   const [loading, setLoading] = useState(false)
   const [quote, setQuote] = useState(null)
@@ -40,6 +43,31 @@ const QuotePage = () => {
     customer_type: 'retail',
     auto_populated: false
   })
+
+  // Handle URL parameters on component mount
+  useEffect(() => {
+    // Check if we should show VSC tab based on URL parameters
+    const coverage = searchParams.get('coverage')
+    const tab = searchParams.get('tab')
+    
+    if (coverage || tab === 'vsc') {
+      setActiveTab('vsc')
+      
+      // Pre-populate coverage level if specified
+      if (coverage) {
+        const coverageMap = {
+          'silver_coverage': 'silver',
+          'gold_coverage': 'gold', 
+          'platinum_coverage': 'platinum'
+        }
+        const mappedCoverage = coverageMap[coverage] || coverage
+        setVscForm(prev => ({
+          ...prev,
+          coverage_level: mappedCoverage
+        }))
+      }
+    }
+  }, [searchParams])
 
   const heroProducts = [
     { value: 'home_protection', label: 'Home Protection Plan', icon: Home },
