@@ -11,7 +11,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs'
 import { Badge } from '../components/ui/badge'
 import { heroAPI, vscAPI, formatCurrency, validateQuoteData, handleAPIError } from '../lib/api'
 
-
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
 const QuotePage = () => {
@@ -126,6 +125,8 @@ const QuotePage = () => {
       if (result.success && result.data) {
         const vehicleInfo = result.data.vehicle_info || result.data
         const eligibilityInfo = result.data.eligibility
+        console.log('VIN decode result:', vehicleInfo)
+        console.log('Eligibility info:', eligibilityInfo)
 
         setVinInfo(vehicleInfo)
 
@@ -674,7 +675,7 @@ const QuotePage = () => {
             </Card>
           </div>
 
-          {/* Quote Results - keeping the existing quote display logic */}
+          {/* Quote Results */}
           <div className="space-y-6">
             {quote ? (
               <motion.div
@@ -695,28 +696,28 @@ const QuotePage = () => {
                   <CardContent className="space-y-6">
                     <div className="text-center space-y-2">
                       <div className="text-3xl font-bold price-highlight">
-                        {formatCurrency(quote.pricing?.total_price || quote.total_price)}
+                        {formatCurrency(quote.pricing_breakdown?.total_price || quote.pricing?.total_price || 0)}
                       </div>
                       <Badge variant="secondary">
-                        {quote.product_info?.customer_type === 'wholesale' ? 'Wholesale Price' : 'Retail Price'}
+                        {(quote.coverage_details?.customer_type || quote.product_info?.customer_type) === 'wholesale' ? 'Wholesale Price' : 'Retail Price'}
                       </Badge>
                     </div>
 
                     <div className="space-y-3">
                       <div className="flex justify-between">
                         <span>Base Price:</span>
-                        <span>{formatCurrency(quote.pricing?.base_price || quote.base_price)}</span>
+                        <span>{formatCurrency(quote.pricing_breakdown?.base_calculation || quote.pricing?.base_price || 0)}</span>
                       </div>
-                      {quote.pricing?.admin_fee && (
+                      {(quote.pricing_breakdown?.admin_fee || quote.pricing?.admin_fee) && (
                         <div className="flex justify-between">
                           <span>Admin Fee:</span>
-                          <span>{formatCurrency(quote.pricing.admin_fee)}</span>
+                          <span>{formatCurrency(quote.pricing_breakdown?.admin_fee || quote.pricing?.admin_fee || 0)}</span>
                         </div>
                       )}
-                      {quote.pricing?.tax_amount && (
+                      {(quote.pricing_breakdown?.tax_amount || quote.pricing?.tax_amount) && (
                         <div className="flex justify-between">
                           <span>Tax:</span>
-                          <span>{formatCurrency(quote.pricing.tax_amount)}</span>
+                          <span>{formatCurrency(quote.pricing_breakdown?.tax_amount || quote.pricing?.tax_amount || 0)}</span>
                         </div>
                       )}
                       {quote.discount && (
@@ -727,16 +728,16 @@ const QuotePage = () => {
                       )}
                       <div className="border-t pt-3 flex justify-between font-bold">
                         <span>Total:</span>
-                        <span>{formatCurrency(quote.pricing?.total_price || quote.total_price)}</span>
+                        <span>{formatCurrency(quote.pricing_breakdown?.total_price || quote.pricing?.total_price || 0)}</span>
                       </div>
                     </div>
 
-                    {(quote.pricing?.monthly_payment || quote.monthly_payment) && (
+                    {(quote.pricing_breakdown?.monthly_payment || quote.pricing?.monthly_payment || quote.payment_options?.monthly_payment) && (
                       <div className="bg-primary/5 p-4 rounded-lg">
                         <div className="text-center">
                           <div className="text-sm text-muted-foreground">Monthly Payment</div>
                           <div className="text-2xl font-bold text-primary">
-                            {formatCurrency(quote.pricing?.monthly_payment || quote.monthly_payment)}
+                            {formatCurrency(quote.pricing_breakdown?.monthly_payment || quote.pricing?.monthly_payment || quote.payment_options?.monthly_payment || 0)}
                           </div>
                         </div>
                       </div>
@@ -755,17 +756,34 @@ const QuotePage = () => {
                       <div className="space-y-2">
                         <h4 className="font-semibold">Coverage Details:</h4>
                         <ul className="text-sm space-y-1">
-                          {quote.coverage_details.map((detail, index) => (
+                          {Object.entries(quote.coverage_details).map(([key, value], index) => (
                             <li key={index} className="flex items-center space-x-2">
                               <CheckCircle className="h-4 w-4 text-green-500" />
-                              <span>{detail}</span>
+                              <span>
+                                <strong>{key.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())}:</strong> {value}
+                              </span>
                             </li>
                           ))}
                         </ul>
                       </div>
                     )}
 
-                    {/* VIN Information Display in Quote */}
+                    {quote.product_info && (
+                      <div className="space-y-2">
+                        <h4 className="font-semibold">Product Information:</h4>
+                        <ul className="text-sm space-y-1">
+                          {Object.entries(quote.product_info).map(([key, value], index) => (
+                            <li key={index} className="flex items-center space-x-2">
+                              <CheckCircle className="h-4 w-4 text-green-500" />
+                              <span>
+                                <strong>{key.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())}:</strong> {value}
+                              </span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+
                     {activeTab === 'vsc' && vinInfo && (
                       <div className="space-y-2 pt-4 border-t">
                         <h4 className="font-semibold">Vehicle Information:</h4>
