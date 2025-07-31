@@ -97,7 +97,60 @@ const QuotePage = () => {
     return { valid: true, message: 'Valid VIN format' }
   }
 
-  // Decode VIN and populate vehicle fields
+  // Improved VSC Eligibility Check (Fixed Logic)
+  const checkVehicleEligibilityUpdated = (vehicleInfo, currentMileage) => {
+    if (!vehicleInfo || !vehicleInfo.year) {
+      return {
+        eligible: false,
+        warnings: [],
+        restrictions: ['Vehicle year information required for eligibility check'],
+        vehicleAge: null,
+        assessmentDate: new Date().toISOString()
+      }
+    }
+
+    const currentYear = new Date().getFullYear()
+    const vehicleAge = currentYear - vehicleInfo.year
+    const mileage = parseInt(currentMileage) || 0
+
+    let eligible = true
+    let warnings = []
+    let restrictions = []
+
+    console.log('Eligibility Check:', { vehicleAge, mileage, year: vehicleInfo.year, currentYear })
+
+    // Updated Age eligibility (20 years max as per your service)
+    if (vehicleAge > 20) {
+      eligible = false
+      restrictions.push(`Vehicle is ${vehicleAge} years old (must be 20 model years or newer)`)
+    } else if (vehicleAge > 15) {
+      warnings.push(`Vehicle is ${vehicleAge} years old - limited coverage options may apply`)
+    }
+
+    // Updated Mileage eligibility (200k max as per your service)
+    if (mileage >= 200000) {
+      eligible = false
+      restrictions.push(`Vehicle has ${mileage.toLocaleString()} miles (must be less than 200,000 miles)`)
+    } else if (mileage > 150000) {
+      warnings.push(`High mileage vehicle (${mileage.toLocaleString()} miles) - premium rates may apply`)
+    }
+
+    // Luxury vehicle considerations
+    const luxuryBrands = ['BMW', 'Mercedes-Benz', 'Audi', 'Lexus', 'Cadillac', 'Lincoln', 'Acura', 'Infiniti']
+    if (luxuryBrands.some(brand => vehicleInfo.make?.toUpperCase().includes(brand.toUpperCase()))) {
+      warnings.push('Luxury vehicle - specialized coverage options available')
+    }
+
+    return {
+      eligible,
+      warnings,
+      restrictions,
+      vehicleAge,
+      assessmentDate: new Date().toISOString()
+    }
+  }
+
+  // Decode VIN and populate vehicle fields (Updated)
   const decodeVIN = async (vin) => {
     const validation = validateVIN(vin)
     if (!validation.valid) {
@@ -111,22 +164,27 @@ const QuotePage = () => {
     setEligibilityCheck(null)
 
     try {
+      // Updated API call to include mileage for eligibility check
       const response = await fetch(`${API_BASE_URL}/api/vin/decode`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ vin: vin.toUpperCase() })
+        body: JSON.stringify({ 
+          vin: vin.toUpperCase(),
+          mileage: parseInt(vscForm.mileage) || null  // Include mileage if available
+        })
       })
 
       const rawResult = await response.json()
       const result = Array.isArray(rawResult) ? rawResult[0] : rawResult
 
+      console.log('VIN decode raw result:', result)
+
       if (result.success && result.data) {
         const vehicleInfo = result.data.vehicle_info || result.data
-        const eligibilityInfo = result.data.eligibility
-        console.log('VIN decode result:', vehicleInfo)
-        console.log('Eligibility info:', eligibilityInfo)
+        
+        console.log('Extracted vehicle info:', vehicleInfo)
 
         setVinInfo(vehicleInfo)
 
@@ -134,32 +192,27 @@ const QuotePage = () => {
         const decodedMake = (vehicleInfo.make || '').toLowerCase()
         const matchedMake = vehicleMakes.find(make => make.toLowerCase() === decodedMake) || vehicleInfo.make || ''
 
-        // Auto-populate form fields
-        setVscForm(prev => ({
-          ...prev,
+        // Auto-populate form fields including MODEL
+        const updatedForm = {
+          ...vscForm,
           make: matchedMake,
+          model: vehicleInfo.model || vscForm.model, // Auto-fill model if available
           year: vehicleInfo.year ? vehicleInfo.year.toString() : '',
           auto_populated: true
-        }))
-
-        if (eligibilityInfo) {
-          setEligibilityCheck({
-            eligible: eligibilityInfo.eligible,
-            warnings: eligibilityInfo.warnings || [],
-            restrictions: eligibilityInfo.restrictions || [],
-            vehicleAge: eligibilityInfo.eligibility_details?.vehicle_age,
-            assessmentDate: eligibilityInfo.assessment_date
-          })
-        } else {
-          checkVehicleEligibility(vehicleInfo)
         }
 
+        setVscForm(updatedForm)
+
+        // Don't run eligibility check here - wait for mileage
+        console.log('VIN decoded successfully, waiting for mileage to check eligibility')
         setVinError('')
       } else {
+        console.error('VIN decode failed:', result)
         setVinError(result.error || 'Failed to decode VIN')
         setVscForm(prev => ({
           ...prev,
           make: '',
+          model: '',
           year: '',
           auto_populated: false
         }))
@@ -170,53 +223,13 @@ const QuotePage = () => {
       setVscForm(prev => ({
         ...prev,
         make: '',
+        model: '',
         year: '',
         auto_populated: false
       }))
     } finally {
       setVinDecoding(false)
     }
-  }
-
-  // Check vehicle eligibility for VSC
-  const checkVehicleEligibility = (vehicleInfo) => {
-    const currentYear = new Date().getFullYear()
-    const vehicleAge = currentYear - (vehicleInfo.year || 0)
-    const maxMileage = parseInt(vscForm.mileage) || 0
-
-    let eligible = true
-    let warnings = []
-    let restrictions = []
-
-    // Age eligibility (typically 15 years max)
-    if (vehicleAge > 15) {
-      eligible = false
-      restrictions.push(`Vehicle is ${vehicleAge} years old (maximum 15 years)`)
-    } else if (vehicleAge > 10) {
-      warnings.push(`Vehicle is ${vehicleAge} years old - limited coverage options available`)
-    }
-
-    // Mileage eligibility (typically 150k max)
-    if (maxMileage > 150000) {
-      eligible = false
-      restrictions.push(`Vehicle has ${maxMileage.toLocaleString()} miles (maximum 150,000)`)
-    } else if (maxMileage > 125000) {
-      warnings.push(`High mileage vehicle - premium rates may apply`)
-    }
-
-    // Luxury vehicle considerations
-    const luxuryBrands = ['BMW', 'Mercedes-Benz', 'Audi', 'Lexus', 'Cadillac', 'Lincoln', 'Acura', 'Infiniti']
-    if (luxuryBrands.some(brand => vehicleInfo.make?.toUpperCase().includes(brand.toUpperCase()))) {
-      warnings.push('Luxury vehicle - specialized coverage options available')
-    }
-
-    setEligibilityCheck({
-      eligible,
-      warnings,
-      restrictions,
-      vehicleAge,
-      assessmentDate: new Date().toISOString()
-    })
   }
 
   // Handle VIN input with debounced decoding
@@ -232,6 +245,7 @@ const QuotePage = () => {
       setVscForm(prev => ({
         ...prev,
         make: '',
+        model: '',
         year: '',
         auto_populated: false
       }))
@@ -241,10 +255,16 @@ const QuotePage = () => {
     }
   }, [vscForm.vin])
 
-  // Re-check eligibility when mileage changes
+  // Check eligibility when both VIN info and mileage are available
   useEffect(() => {
-    if (vinInfo && vscForm.mileage) {
-      checkVehicleEligibility(vinInfo)
+    if (vinInfo && vscForm.mileage && parseInt(vscForm.mileage) > 0) {
+      console.log('Running eligibility check with:', { vinInfo, mileage: vscForm.mileage })
+      const eligibilityResult = checkVehicleEligibilityUpdated(vinInfo, vscForm.mileage)
+      console.log('Eligibility result:', eligibilityResult)
+      setEligibilityCheck(eligibilityResult)
+    } else if (vinInfo && !vscForm.mileage) {
+      // Clear eligibility if mileage is removed
+      setEligibilityCheck(null)
     }
   }, [vscForm.mileage, vinInfo])
 
@@ -497,6 +517,7 @@ const QuotePage = () => {
                               </div>
                               <div className="text-sm space-y-1">
                                 <p><strong>Make:</strong> {vinInfo.make}</p>
+                                {vinInfo.model && <p><strong>Model:</strong> {vinInfo.model}</p>}
                                 <p><strong>Year:</strong> {vinInfo.year}</p>
                                 {vinInfo.trim && <p><strong>Trim:</strong> {vinInfo.trim}</p>}
                                 {vinInfo.engine && <p><strong>Engine:</strong> {vinInfo.engine}</p>}
@@ -533,12 +554,14 @@ const QuotePage = () => {
                         <div className="space-y-2">
                           <Label htmlFor="vsc-model">
                             Vehicle Model
+                            {vscForm.auto_populated && vinInfo?.model && <Badge variant="secondary" className="ml-2 text-xs">Auto-filled</Badge>}
                           </Label>
                           <Input
                             id="vsc-model"
                             placeholder="Enter model"
                             value={vscForm.model}
                             onChange={(e) => setVscForm({...vscForm, model: e.target.value})}
+                            className={vscForm.auto_populated && vinInfo?.model ? 'bg-green-50 border-green-300' : ''}
                           />
                         </div>
 
@@ -560,7 +583,11 @@ const QuotePage = () => {
                         </div>
 
                         <div className="space-y-2">
-                          <Label htmlFor="vsc-mileage">Current Mileage</Label>
+                          <Label htmlFor="vsc-mileage">
+                            Current Mileage
+                            <span className="text-red-500 ml-1">*</span>
+                            <span className="text-sm text-muted-foreground ml-1">(Required for eligibility)</span>
+                          </Label>
                           <Input
                             id="vsc-mileage"
                             type="number"
@@ -569,6 +596,7 @@ const QuotePage = () => {
                             max="500000"
                             value={vscForm.mileage}
                             onChange={(e) => setVscForm({...vscForm, mileage: e.target.value})}
+                            className="border-blue-300 focus:border-blue-500"
                           />
                         </div>
 
@@ -611,7 +639,7 @@ const QuotePage = () => {
                       </div>
 
                       {/* Eligibility Check Results */}
-                      {eligibilityCheck && (
+                      {vinInfo && vscForm.mileage && eligibilityCheck && (
                         <div className={`p-4 rounded-lg border ${
                           eligibilityCheck.eligible 
                             ? 'bg-green-50 border-green-200' 
@@ -626,7 +654,7 @@ const QuotePage = () => {
                             <span className={`font-medium ${
                               eligibilityCheck.eligible ? 'text-green-800' : 'text-red-800'
                             }`}>
-                              {eligibilityCheck.eligible ? 'Vehicle Eligible' : 'Vehicle Not Eligible'}
+                              {eligibilityCheck.eligible ? 'Vehicle Eligible for VSC' : 'Vehicle Not Eligible for VSC'}
                             </span>
                           </div>
                           
@@ -643,7 +671,7 @@ const QuotePage = () => {
                           
                           {eligibilityCheck.warnings.length > 0 && (
                             <div>
-                              <p className="text-yellow-800 font-medium text-sm mb-1">Warnings:</p>
+                              <p className="text-yellow-800 font-medium text-sm mb-1">Considerations:</p>
                               <ul className="text-yellow-700 text-sm space-y-1">
                                 {eligibilityCheck.warnings.map((warning, index) => (
                                   <li key={index}>• {warning}</li>
@@ -651,6 +679,19 @@ const QuotePage = () => {
                               </ul>
                             </div>
                           )}
+                        </div>
+                      )}
+
+                      {/* Mileage reminder if VIN decoded but no mileage */}
+                      {vinInfo && !vscForm.mileage && (
+                        <div className="p-4 rounded-lg border border-yellow-200 bg-yellow-50">
+                          <div className="flex items-center space-x-2">
+                            <AlertCircle className="h-5 w-5 text-yellow-600" />
+                            <span className="text-yellow-800 font-medium">Enter Current Mileage</span>
+                          </div>
+                          <p className="text-yellow-700 text-sm mt-1">
+                            Please enter your vehicle's current mileage to check eligibility for our service contract.
+                          </p>
                         </div>
                       )}
 
@@ -789,10 +830,17 @@ const QuotePage = () => {
                         <h4 className="font-semibold">Vehicle Information:</h4>
                         <div className="text-sm space-y-1 bg-gray-50 p-3 rounded">
                           <p><strong>VIN:</strong> {vscForm.vin}</p>
-                          <p><strong>Vehicle:</strong> {vinInfo.year} {vinInfo.make} {vinInfo.model}</p>
+                          <p><strong>Vehicle:</strong> {vinInfo.year} {vinInfo.make} {vinInfo.model || 'Model not specified'}</p>
                           {vinInfo.trim && <p><strong>Trim:</strong> {vinInfo.trim}</p>}
                           {vinInfo.engine && <p><strong>Engine:</strong> {vinInfo.engine}</p>}
                           <p><strong>Mileage:</strong> {parseInt(vscForm.mileage).toLocaleString()} miles</p>
+                          {eligibilityCheck && (
+                            <p><strong>Eligibility:</strong> 
+                              <span className={eligibilityCheck.eligible ? 'text-green-600 font-medium' : 'text-red-600 font-medium'}>
+                                {eligibilityCheck.eligible ? ' Eligible' : ' Not Eligible'}
+                              </span>
+                            </p>
+                          )}
                         </div>
                       </div>
                     )}
@@ -873,6 +921,15 @@ const QuotePage = () => {
                   <p className="text-muted-foreground">
                     The VIN automatically fills vehicle details and checks eligibility for our service contracts.
                   </p>
+                  
+                  <div className="bg-blue-50 p-3 rounded border border-blue-200 mt-4">
+                    <p className="text-blue-800 font-medium text-sm">Eligibility Requirements:</p>
+                    <ul className="text-blue-700 text-sm mt-1 space-y-1">
+                      <li>• Vehicle must be 20 model years or newer</li>
+                      <li>• Less than 200,000 miles</li>
+                      <li>• Current mileage required for accurate eligibility check</li>
+                    </ul>
+                  </div>
                 </CardContent>
               </Card>
             )}
