@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { useLocation, useSearchParams } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { Calculator, Car, Home, Shield, DollarSign, CheckCircle, AlertCircle, Loader, Search } from 'lucide-react'
+import { Calculator, Car, Home, Shield, DollarSign, CheckCircle, AlertCircle, Loader, Search, CreditCard, FileText, Lock } from 'lucide-react'
 import { Button } from '../components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card'
 import { Input } from '../components/ui/input'
@@ -9,6 +9,7 @@ import { Label } from '../components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs'
 import { Badge } from '../components/ui/badge'
+import { Separator } from '../components/ui/separator'
 import { heroAPI, vscAPI, formatCurrency, validateQuoteData, handleAPIError } from '../lib/api'
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
@@ -24,6 +25,39 @@ const QuotePage = () => {
   const [vinError, setVinError] = useState('')
   const [vinInfo, setVinInfo] = useState(null)
   const [eligibilityCheck, setEligibilityCheck] = useState(null)
+
+  // Payment states
+  const [showPayment, setShowPayment] = useState(false)
+  const [paymentLoading, setPaymentLoading] = useState(false)
+  const [paymentMethod, setPaymentMethod] = useState('credit_card')
+  const [paymentResult, setPaymentResult] = useState(null)
+  const [customerInfo, setCustomerInfo] = useState({
+    first_name: '',
+    last_name: '',
+    email: '',
+    phone: ''
+  })
+  
+  // Credit card states
+  const [cardInfo, setCardInfo] = useState({
+    card_number: '',
+    expiry_month: '',
+    expiry_year: '',
+    cvv: '',
+    cardholder_name: ''
+  })
+  
+  // Billing info states
+  const [billingInfo, setBillingInfo] = useState({
+    address: '',
+    city: '',
+    state: '',
+    zip_code: '',
+    country: 'US'
+  })
+
+  // Financing states
+  const [financingTerms, setFinancingTerms] = useState('12')
 
   // Hero Products Form State
   const [heroForm, setHeroForm] = useState({
@@ -48,14 +82,12 @@ const QuotePage = () => {
 
   // Handle URL parameters on component mount
   useEffect(() => {
-    // Check if we should show VSC tab based on URL parameters
     const coverage = searchParams.get('coverage')
     const tab = searchParams.get('tab')
     
     if (coverage || tab === 'vsc') {
       setActiveTab('vsc')
       
-      // Pre-populate coverage level if specified
       if (coverage) {
         const coverageMap = {
           'silver_coverage': 'silver',
@@ -97,7 +129,7 @@ const QuotePage = () => {
     return { valid: true, message: 'Valid VIN format' }
   }
 
-  // Improved VSC Eligibility Check (Fixed Logic)
+  // VSC Eligibility Check
   const checkVehicleEligibilityUpdated = (vehicleInfo, currentMileage) => {
     if (!vehicleInfo || !vehicleInfo.year) {
       return {
@@ -117,7 +149,6 @@ const QuotePage = () => {
     let warnings = []
     let restrictions = []
 
-    // Updated Age eligibility (20 years max as per your service)
     if (vehicleAge > 20) {
       eligible = false
       restrictions.push(`Vehicle is ${vehicleAge} years old (must be 20 model years or newer)`)
@@ -125,7 +156,6 @@ const QuotePage = () => {
       warnings.push(`Vehicle is ${vehicleAge} years old - limited coverage options may apply`)
     }
 
-    // Updated Mileage eligibility (200k max as per your service)
     if (mileage >= 200000) {
       eligible = false
       restrictions.push(`Vehicle has ${mileage.toLocaleString()} miles (must be less than 200,000 miles)`)
@@ -133,7 +163,6 @@ const QuotePage = () => {
       warnings.push(`High mileage vehicle (${mileage.toLocaleString()} miles) - premium rates may apply`)
     }
 
-    // Luxury vehicle considerations
     const luxuryBrands = ['BMW', 'Mercedes-Benz', 'Audi', 'Lexus', 'Cadillac', 'Lincoln', 'Acura', 'Infiniti']
     if (luxuryBrands.some(brand => vehicleInfo.make?.toUpperCase().includes(brand.toUpperCase()))) {
       warnings.push('Luxury vehicle - specialized coverage options available')
@@ -148,7 +177,7 @@ const QuotePage = () => {
     }
   }
 
-  // Decode VIN and populate vehicle fields (Updated)
+  // Decode VIN and populate vehicle fields
   const decodeVIN = async (vin) => {
     const validation = validateVIN(vin)
     if (!validation.valid) {
@@ -162,7 +191,6 @@ const QuotePage = () => {
     setEligibilityCheck(null)
 
     try {
-      // Updated API call to include mileage for eligibility check
       const response = await fetch(`${API_BASE_URL}/api/vin/decode`, {
         method: 'POST',
         headers: {
@@ -170,7 +198,7 @@ const QuotePage = () => {
         },
         body: JSON.stringify({ 
           vin: vin.toUpperCase(),
-          mileage: parseInt(vscForm.mileage) || null  // Include mileage if available
+          mileage: parseInt(vscForm.mileage) || null
         })
       })
 
@@ -179,27 +207,22 @@ const QuotePage = () => {
 
       if (result.success && result.data) {
         const vehicleInfo = result.data.vehicle_info || result.data
-
         setVinInfo(vehicleInfo)
 
-        // Normalize and match the decoded make to known makes
         const decodedMake = (vehicleInfo.make || '').toLowerCase()
         const matchedMake = vehicleMakes.find(make => make.toLowerCase() === decodedMake) || vehicleInfo.make || ''
 
-        // Auto-populate form fields including MODEL
         const updatedForm = {
           ...vscForm,
           make: matchedMake,
-          model: vehicleInfo.model || vscForm.model, // Auto-fill model if available
+          model: vehicleInfo.model || vscForm.model,
           year: vehicleInfo.year ? vehicleInfo.year.toString() : '',
           auto_populated: true
         }
 
         setVscForm(updatedForm)
-
         setVinError('')
       } else {
-        console.error('VIN decode failed:', result)
         setVinError(result.error || 'Failed to decode VIN')
         setVscForm(prev => ({
           ...prev,
@@ -210,7 +233,6 @@ const QuotePage = () => {
         }))
       }
     } catch (err) {
-      console.error('VIN decode error:', err)
       setVinError('VIN decoder service unavailable')
       setVscForm(prev => ({
         ...prev,
@@ -229,11 +251,10 @@ const QuotePage = () => {
     if (vscForm.vin && vscForm.vin.length === 17) {
       const timer = setTimeout(() => {
         decodeVIN(vscForm.vin)
-      }, 500) // Debounce for 500ms
+      }, 500)
 
       return () => clearTimeout(timer)
     } else if (vscForm.vin.length < 17 && vscForm.auto_populated) {
-      // Clear auto-populated fields if VIN becomes invalid
       setVscForm(prev => ({
         ...prev,
         make: '',
@@ -253,7 +274,6 @@ const QuotePage = () => {
       const eligibilityResult = checkVehicleEligibilityUpdated(vinInfo, vscForm.mileage)
       setEligibilityCheck(eligibilityResult)
     } else if (vinInfo && !vscForm.mileage) {
-      // Clear eligibility if mileage is removed
       setEligibilityCheck(null)
     }
   }, [vscForm.mileage, vinInfo])
@@ -283,11 +303,12 @@ const QuotePage = () => {
       
       if (responseData.success && responseData.data) {
         setQuote(responseData.data)
+        setShowPayment(false)
+        setPaymentResult(null)
       } else {
         setError(responseData.error || 'Quote generation failed')
       }
     } catch (err) {
-      console.error('Hero quote error:', err)
       setError(handleAPIError(err))
     } finally {
       setLoading(false)
@@ -301,7 +322,6 @@ const QuotePage = () => {
     setQuote(null)
 
     try {
-      // Check eligibility first
       if (eligibilityCheck && !eligibilityCheck.eligible) {
         setError(`Vehicle not eligible: ${eligibilityCheck.restrictions.join(', ')}`)
         return
@@ -321,7 +341,6 @@ const QuotePage = () => {
         coverage_level: vscForm.coverage_level,
         term_months: parseInt(vscForm.term_months),
         customer_type: vscForm.customer_type,
-        // Include VIN and decoded info for reference
         vin: vscForm.vin,
         vin_decoded: vinInfo,
         auto_populated: vscForm.auto_populated
@@ -332,15 +351,641 @@ const QuotePage = () => {
 
       if (responseData.success && responseData.data) {
         setQuote(responseData.data)
+        setShowPayment(false)
+        setPaymentResult(null)
       } else {
         setError(responseData.error || 'Quote generation failed')
       }
     } catch (err) {
-      console.error('VSC quote error:', err)
       setError(handleAPIError(err))
     } finally {
       setLoading(false)
     }
+  }
+
+  // Credit Card Validation
+  const validateCardNumber = (cardNumber) => {
+    const cleaned = cardNumber.replace(/\s+/g, '').replace(/[^0-9]/gi, '')
+    return cleaned.length >= 13 && cleaned.length <= 19
+  }
+
+  const formatCardNumber = (value) => {
+    const v = value.replace(/\s+/g, '').replace(/[^0-9]/gi, '')
+    const matches = v.match(/\d{4,16}/g)
+    const match = matches && matches[0] || ''
+    const parts = []
+    for (let i = 0, len = match.length; i < len; i += 4) {
+      parts.push(match.substring(i, i + 4))
+    }
+    if (parts.length) {
+      return parts.join(' ')
+    } else {
+      return v
+    }
+  }
+
+  const getCardType = (cardNumber) => {
+    const number = cardNumber.replace(/\s+/g, '')
+    if (number.startsWith('4')) return 'Visa'
+    if (number.startsWith('5') || number.startsWith('2')) return 'MasterCard'
+    if (number.startsWith('3')) return 'American Express'
+    if (number.startsWith('6')) return 'Discover'
+    return 'Unknown'
+  }
+
+  // Payment Processing
+  const processPayment = async () => {
+    setPaymentLoading(true)
+    setError('')
+
+    try {
+      // Validate required fields
+      if (!customerInfo.first_name || !customerInfo.last_name || !customerInfo.email) {
+        setError('Please fill in all customer information fields')
+        return
+      }
+
+      if (paymentMethod === 'credit_card') {
+        if (!cardInfo.card_number || !cardInfo.expiry_month || !cardInfo.expiry_year || !cardInfo.cvv) {
+          setError('Please fill in all credit card fields')
+          return
+        }
+
+        if (!validateCardNumber(cardInfo.card_number)) {
+          setError('Please enter a valid credit card number')
+          return
+        }
+
+        if (!billingInfo.address || !billingInfo.city || !billingInfo.state || !billingInfo.zip_code) {
+          setError('Please fill in all billing address fields')
+          return
+        }
+      }
+
+      const totalAmount = quote.pricing_breakdown?.total_price || quote.pricing?.total_price || 0
+      
+      const paymentData = {
+        quote_id: quote.quote_id || `QUOTE-${Date.now()}`,
+        payment_method: paymentMethod,
+        amount: totalAmount,
+        customer_info: customerInfo,
+        card_info: paymentMethod === 'credit_card' ? {
+          ...cardInfo,
+          card_number: cardInfo.card_number.replace(/\s+/g, '')
+        } : undefined,
+        billing_info: paymentMethod === 'credit_card' ? billingInfo : undefined,
+        financing_terms: paymentMethod === 'financing' ? financingTerms : undefined,
+        payment_details: {
+          product_type: activeTab === 'vsc' ? 'vehicle_service_contract' : 'hero_product',
+          coverage_details: quote.coverage_details || {},
+          vehicle_info: activeTab === 'vsc' ? {
+            make: vscForm.make,
+            model: vscForm.model,
+            year: vscForm.year,
+            mileage: vscForm.mileage,
+            vin: vscForm.vin
+          } : undefined
+        }
+      }
+
+      const response = await fetch(`${API_BASE_URL}/api/payments/process`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(paymentData)
+      })
+
+      const result = await response.json()
+
+      if (result.success && result.data) {
+        setPaymentResult(result.data)
+        setShowPayment(false)
+        setError('')
+      } else {
+        setError(result.error || 'Payment processing failed')
+      }
+    } catch (err) {
+      setError(`Payment error: ${err.message}`)
+    } finally {
+      setPaymentLoading(false)
+    }
+  }
+
+  const handlePurchase = () => {
+    if (!quote) return
+    setShowPayment(true)
+    setError('')
+    setPaymentResult(null)
+  }
+
+  const resetQuote = () => {
+    setQuote(null)
+    setShowPayment(false)
+    setPaymentResult(null)
+    setError('')
+  }
+
+  if (paymentResult) {
+    return (
+      <div className="min-h-screen py-12 bg-gray-50">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8 }}
+            className="text-center"
+          >
+            <Card>
+              <CardHeader>
+                <div className="bg-green-100 p-3 rounded-full w-fit mx-auto mb-4">
+                  <CheckCircle className="h-12 w-12 text-green-600" />
+                </div>
+                <CardTitle className="text-3xl text-green-700">Payment Successful!</CardTitle>
+                <CardDescription className="text-lg">
+                  Your protection plan has been purchased successfully
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <div className="bg-green-50 p-6 rounded-lg border border-green-200">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <Label className="font-semibold">Transaction ID:</Label>
+                      <p className="text-sm">{paymentResult.transaction_number}</p>
+                    </div>
+                    <div>
+                      <Label className="font-semibold">Confirmation Number:</Label>
+                      <p className="text-sm">{paymentResult.confirmation_number}</p>
+                    </div>
+                    <div>
+                      <Label className="font-semibold">Amount Paid:</Label>
+                      <p className="text-sm">{formatCurrency(paymentResult.amount)}</p>
+                    </div>
+                    <div>
+                      <Label className="font-semibold">Status:</Label>
+                      <Badge variant="secondary" className="bg-green-100 text-green-800">
+                        {paymentResult.status}
+                      </Badge>
+                    </div>
+                  </div>
+                </div>
+
+                {paymentResult.next_steps && paymentResult.next_steps.length > 0 && (
+                  <div className="text-left">
+                    <h3 className="font-semibold mb-3">Next Steps:</h3>
+                    <ul className="space-y-2">
+                      {paymentResult.next_steps.map((step, index) => (
+                        <li key={index} className="flex items-start space-x-2">
+                          <CheckCircle className="h-4 w-4 text-green-500 mt-0.5 flex-shrink-0" />
+                          <span className="text-sm">{step}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+
+                <div className="space-y-3">
+                  <Button onClick={resetQuote} className="w-full">
+                    Get Another Quote
+                  </Button>
+                  <Button variant="outline" className="w-full">
+                    <FileText className="h-4 w-4 mr-2" />
+                    Download Receipt
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          </motion.div>
+        </div>
+      </div>
+    )
+  }
+
+  if (showPayment && quote) {
+    return (
+      <div className="min-h-screen py-12 bg-gray-50">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            {/* Payment Form */}
+            <div className="lg:col-span-2">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center space-x-2">
+                    <Lock className="h-5 w-5" />
+                    <span>Secure Payment</span>
+                  </CardTitle>
+                  <CardDescription>
+                    Complete your purchase to activate your protection plan
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                  {/* Customer Information */}
+                  <div className="space-y-4">
+                    <h3 className="font-semibold text-lg">Customer Information</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <Label htmlFor="first_name">First Name *</Label>
+                        <Input
+                          id="first_name"
+                          value={customerInfo.first_name}
+                          onChange={(e) => setCustomerInfo({...customerInfo, first_name: e.target.value})}
+                          required
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="last_name">Last Name *</Label>
+                        <Input
+                          id="last_name"
+                          value={customerInfo.last_name}
+                          onChange={(e) => setCustomerInfo({...customerInfo, last_name: e.target.value})}
+                          required
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="email">Email *</Label>
+                        <Input
+                          id="email"
+                          type="email"
+                          value={customerInfo.email}
+                          onChange={(e) => setCustomerInfo({...customerInfo, email: e.target.value})}
+                          required
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="phone">Phone</Label>
+                        <Input
+                          id="phone"
+                          type="tel"
+                          value={customerInfo.phone}
+                          onChange={(e) => setCustomerInfo({...customerInfo, phone: e.target.value})}
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  <Separator />
+
+                  {/* Payment Method Selection */}
+                  <div className="space-y-4">
+                    <h3 className="font-semibold text-lg">Payment Method</h3>
+                    <Tabs value={paymentMethod} onValueChange={setPaymentMethod}>
+                      <TabsList className="grid w-full grid-cols-2">
+                        <TabsTrigger value="credit_card">Credit Card</TabsTrigger>
+                        <TabsTrigger value="financing">Financing</TabsTrigger>
+                      </TabsList>
+
+                      <TabsContent value="credit_card" className="space-y-4 mt-6">
+                        {/* Credit Card Form */}
+                        <div className="grid grid-cols-1 gap-4">
+                          <div>
+                            <Label htmlFor="card_number">Card Number *</Label>
+                            <div className="relative">
+                              <Input
+                                id="card_number"
+                                placeholder="1234 5678 9012 3456"
+                                value={cardInfo.card_number}
+                                onChange={(e) => setCardInfo({
+                                  ...cardInfo, 
+                                  card_number: formatCardNumber(e.target.value)
+                                })}
+                                maxLength={19}
+                                required
+                              />
+                              <div className="absolute right-3 top-1/2 transform -translate-y-1/2 text-xs text-gray-500">
+                                {getCardType(cardInfo.card_number)}
+                              </div>
+                            </div>
+                          </div>
+                          
+                          <div>
+                            <Label htmlFor="cardholder_name">Cardholder Name *</Label>
+                            <Input
+                              id="cardholder_name"
+                              placeholder="John Doe"
+                              value={cardInfo.cardholder_name}
+                              onChange={(e) => setCardInfo({...cardInfo, cardholder_name: e.target.value})}
+                              required
+                            />
+                          </div>
+
+                          <div className="grid grid-cols-3 gap-4">
+                            <div>
+                              <Label htmlFor="expiry_month">Month *</Label>
+                              <Select
+                                value={cardInfo.expiry_month}
+                                onValueChange={(value) => setCardInfo({...cardInfo, expiry_month: value})}
+                              >
+                                <SelectTrigger>
+                                  <SelectValue placeholder="MM" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {Array.from({length: 12}, (_, i) => (
+                                    <SelectItem key={i + 1} value={String(i + 1).padStart(2, '0')}>
+                                      {String(i + 1).padStart(2, '0')}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </div>
+                            <div>
+                              <Label htmlFor="expiry_year">Year *</Label>
+                              <Select
+                                value={cardInfo.expiry_year}
+                                onValueChange={(value) => setCardInfo({...cardInfo, expiry_year: value})}
+                              >
+                                <SelectTrigger>
+                                  <SelectValue placeholder="YYYY" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {Array.from({length: 10}, (_, i) => {
+                                    const year = new Date().getFullYear() + i
+                                    return (
+                                      <SelectItem key={year} value={String(year)}>
+                                        {year}
+                                      </SelectItem>
+                                    )
+                                  })}
+                                </SelectContent>
+                              </Select>
+                            </div>
+                            <div>
+                              <Label htmlFor="cvv">CVV *</Label>
+                              <Input
+                                id="cvv"
+                                placeholder="123"
+                                value={cardInfo.cvv}
+                                onChange={(e) => setCardInfo({
+                                  ...cardInfo, 
+                                  cvv: e.target.value.replace(/\D/g, '')
+                                })}
+                                maxLength={4}
+                                required
+                              />
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Billing Address */}
+                        <div className="space-y-4 pt-4 border-t">
+                          <h4 className="font-medium">Billing Address</h4>
+                          <div className="grid grid-cols-1 gap-4">
+                            <div>
+                              <Label htmlFor="address">Address *</Label>
+                              <Input
+                                id="address"
+                                placeholder="123 Main St"
+                                value={billingInfo.address}
+                                onChange={(e) => setBillingInfo({...billingInfo, address: e.target.value})}
+                                required
+                              />
+                            </div>
+                            <div className="grid grid-cols-2 gap-4">
+                              <div>
+                                <Label htmlFor="city">City *</Label>
+                                <Input
+                                  id="city"
+                                  placeholder="City"
+                                  value={billingInfo.city}
+                                  onChange={(e) => setBillingInfo({...billingInfo, city: e.target.value})}
+                                  required
+                                />
+                              </div>
+                              <div>
+                                <Label htmlFor="state">State *</Label>
+                                <Input
+                                  id="state"
+                                  placeholder="State"
+                                  value={billingInfo.state}
+                                  onChange={(e) => setBillingInfo({...billingInfo, state: e.target.value})}
+                                  required
+                                />
+                              </div>
+                            </div>
+                            <div className="grid grid-cols-2 gap-4">
+                              <div>
+                                <Label htmlFor="zip_code">ZIP Code *</Label>
+                                <Input
+                                  id="zip_code"
+                                  placeholder="12345"
+                                  value={billingInfo.zip_code}
+                                  onChange={(e) => setBillingInfo({
+                                    ...billingInfo, 
+                                      zip_code: e.target.value.replace(/\D/g, '')
+                                  })}
+                                  maxLength={5}
+                                  required
+                                />
+                              </div>
+                              <div>
+                                <Label htmlFor="country">Country *</Label>
+                                <Select
+                                  value={billingInfo.country}
+                                  onValueChange={(value) => setBillingInfo({...billingInfo, country: value})}
+                                >
+                                  <SelectTrigger>
+                                    <SelectValue placeholder="Country" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="US">United States</SelectItem>
+                                    <SelectItem value="CA">Canada</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </TabsContent>
+
+                      <TabsContent value="financing" className="space-y-4 mt-6">
+                        {/* Financing Options */}
+                        <div className="space-y-4">
+                          <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
+                            <h4 className="font-medium text-blue-900 mb-2">0% APR Financing Available</h4>
+                            <p className="text-sm text-blue-700">
+                              Pay over time with no interest for qualified customers
+                            </p>
+                          </div>
+                          
+                          <div>
+                            <Label htmlFor="financing_terms">Financing Terms</Label>
+                            <Select
+                              value={financingTerms}
+                              onValueChange={setFinancingTerms}
+                            >
+                              <SelectTrigger>
+                                <SelectValue placeholder="Select terms" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="12">12 months - 0% APR</SelectItem>
+                                <SelectItem value="24">24 months - 0% APR</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+
+                          {financingTerms && (
+                            <div className="bg-gray-50 p-4 rounded-lg">
+                              <div className="text-sm space-y-2">
+                                <div className="flex justify-between">
+                                  <span>Total Amount:</span>
+                                  <span className="font-semibold">
+                                    {formatCurrency(quote.pricing_breakdown?.total_price || quote.pricing?.total_price || 0)}
+                                  </span>
+                                </div>
+                                <div className="flex justify-between">
+                                  <span>Monthly Payment:</span>
+                                  <span className="font-semibold">
+                                    {formatCurrency((quote.pricing_breakdown?.total_price || quote.pricing?.total_price || 0) / parseInt(financingTerms))}
+                                  </span>
+                                </div>
+                                <div className="flex justify-between">
+                                  <span>Term:</span>
+                                  <span>{financingTerms} months</span>
+                                </div>
+                                <div className="flex justify-between">
+                                  <span>APR:</span>
+                                  <span className="text-green-600 font-semibold">0%</span>
+                                </div>
+                              </div>
+                            </div>
+                          )}
+
+                          <div className="text-xs text-gray-500">
+                            * Subject to credit approval. Terms and conditions apply.
+                          </div>
+                        </div>
+                      </TabsContent>
+                    </Tabs>
+                  </div>
+
+                  <Separator />
+
+                  {/* Error Display */}
+                  {error && (
+                    <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+                      <div className="flex items-center space-x-2">
+                        <AlertCircle className="h-4 w-4 text-red-600" />
+                        <p className="text-red-600 text-sm">{error}</p>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Action Buttons */}
+                  <div className="space-y-3">
+                    <Button 
+                      onClick={processPayment} 
+                      className="w-full" 
+                      disabled={paymentLoading}
+                    >
+                      {paymentLoading ? (
+                        <>
+                          <Loader className="h-4 w-4 mr-2 animate-spin" />
+                          Processing Payment...
+                        </>
+                      ) : (
+                        <>
+                          <CreditCard className="h-4 w-4 mr-2" />
+                          Complete Purchase
+                        </>
+                      )}
+                    </Button>
+                    <Button 
+                      variant="outline" 
+                      onClick={() => setShowPayment(false)}
+                      className="w-full"
+                      disabled={paymentLoading}
+                    >
+                      Back to Quote
+                    </Button>
+                  </div>
+
+                  {/* Security Notice */}
+                  <div className="bg-gray-50 p-4 rounded-lg border text-center">
+                    <div className="flex items-center justify-center space-x-2 text-sm text-gray-600">
+                      <Lock className="h-4 w-4" />
+                      <span>Your payment information is encrypted and secure</span>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Order Summary */}
+            <div>
+              <Card>
+                <CardHeader>
+                  <CardTitle>Order Summary</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="space-y-3">
+                    <div className="flex justify-between">
+                      <span>Base Price:</span>
+                      <span>{formatCurrency(quote.pricing_breakdown?.base_calculation || quote.pricing?.base_price || 0)}</span>
+                    </div>
+                    {(quote.pricing_breakdown?.admin_fee || quote.pricing?.admin_fee) && (
+                      <div className="flex justify-between">
+                        <span>Admin Fee:</span>
+                        <span>{formatCurrency(quote.pricing_breakdown?.admin_fee || quote.pricing?.admin_fee || 0)}</span>
+                      </div>
+                    )}
+                    {(quote.pricing_breakdown?.tax_amount || quote.pricing?.tax_amount) && (
+                      <div className="flex justify-between">
+                        <span>Tax:</span>
+                        <span>{formatCurrency(quote.pricing_breakdown?.tax_amount || quote.pricing?.tax_amount || 0)}</span>
+                      </div>
+                    )}
+                    <Separator />
+                    <div className="flex justify-between font-bold text-lg">
+                      <span>Total:</span>
+                      <span>{formatCurrency(quote.pricing_breakdown?.total_price || quote.pricing?.total_price || 0)}</span>
+                    </div>
+                  </div>
+
+                  {/* Coverage Summary */}
+                  {quote.coverage_details && (
+                    <div className="pt-4 border-t">
+                      <h4 className="font-semibold mb-3">Coverage Details:</h4>
+                      <div className="space-y-2 text-sm">
+                        {Object.entries(quote.coverage_details).map(([key, value], index) => (
+                          <div key={index} className="flex justify-between">
+                            <span className="text-gray-600">
+                              {key.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())}:
+                            </span>
+                            <span className="font-medium">{value}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Vehicle Information (for VSC) */}
+                  {activeTab === 'vsc' && vinInfo && (
+                    <div className="pt-4 border-t">
+                      <h4 className="font-semibold mb-3">Vehicle Information:</h4>
+                      <div className="space-y-2 text-sm">
+                        <div className="flex justify-between">
+                          <span className="text-gray-600">Vehicle:</span>
+                          <span className="font-medium">{vinInfo.year} {vinInfo.make} {vinInfo.model || 'Model not specified'}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-gray-600">Mileage:</span>
+                          <span className="font-medium">{parseInt(vscForm.mileage).toLocaleString()} miles</span>
+                        </div>
+                        {vscForm.vin && (
+                          <div className="flex justify-between">
+                            <span className="text-gray-600">VIN:</span>
+                            <span className="font-medium text-xs">{vscForm.vin}</span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
+          </div>
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -775,7 +1420,8 @@ const QuotePage = () => {
                     )}
 
                     <div className="space-y-2">
-                      <Button className="w-full">
+                      <Button className="w-full" onClick={handlePurchase}>
+                        <CreditCard className="h-4 w-4 mr-2" />
                         Purchase This Plan
                       </Button>
                       <Button variant="outline" className="w-full">
@@ -923,6 +1569,49 @@ const QuotePage = () => {
                 </CardContent>
               </Card>
             )}
+
+            {/* Payment Methods Card */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center space-x-2">
+                  <CreditCard className="h-5 w-5" />
+                  <span>Payment Options</span>
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="text-sm space-y-3">
+                <div className="space-y-3">
+                  <div className="flex items-center space-x-3">
+                    <div className="bg-blue-100 p-2 rounded">
+                      <CreditCard className="h-4 w-4 text-blue-600" />
+                    </div>
+                    <div>
+                      <p className="font-medium">Credit Card</p>
+                      <p className="text-muted-foreground text-xs">Visa, MasterCard, American Express, Discover</p>
+                    </div>
+                  </div>
+                  
+                  <div className="flex items-center space-x-3">
+                    <div className="bg-green-100 p-2 rounded">
+                      <DollarSign className="h-4 w-4 text-green-600" />
+                    </div>
+                    <div>
+                      <p className="font-medium">0% APR Financing</p>
+                      <p className="text-muted-foreground text-xs">12 or 24 months • No interest • Quick approval</p>
+                    </div>
+                  </div>
+                </div>
+                
+                <div className="bg-gray-50 p-3 rounded border mt-4">
+                  <div className="flex items-center space-x-2">
+                    <Lock className="h-4 w-4 text-gray-600" />
+                    <span className="text-xs text-gray-600 font-medium">Secure Payment Processing</span>
+                  </div>
+                  <p className="text-xs text-gray-500 mt-1">
+                    All payments are encrypted and processed securely through our certified payment partners.
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
           </div>
         </div>
       </div>
