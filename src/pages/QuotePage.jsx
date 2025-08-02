@@ -16,8 +16,8 @@ const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
 // HelcimJS Configuration
 const HELCIM_CONFIG = {
-  token: 'de2a5120a337b055a082b5',
-  secretKey: '9a5543515f6624cbddf2bdef246a9d3a86bc3268'
+  token: import.meta.env.VITE_HELCIM_TOKEN,
+  secretKey: import.meta.env.VITE_HELCIM_SECRET_KEY
 };
 
 const QuotePage = () => {
@@ -76,36 +76,6 @@ const QuotePage = () => {
     customer_type: 'retail',
     auto_populated: false
   })
-
-  // Check HelcimJS library availability
-  useEffect(() => {
-    const checkHelcimJS = () => {
-      console.log('🔍 Checking HelcimJS availability...');
-      
-      // Check for the helcimProcess function (this is the main function in the Helcim script)
-      if (typeof window.helcimProcess === 'function') {
-        console.log('✅ HelcimJS helcimProcess function available');
-      } else {
-        console.log('❌ HelcimJS helcimProcess function not found');
-      }
-      
-      // Check if the script tag exists
-      const existingScript = document.querySelector('script[src*="helcim"]');
-      if (existingScript) {
-        console.log('✅ HelcimJS script tag found:', existingScript.src);
-      } else {
-        console.log('❌ HelcimJS script tag not found');
-      }
-    };
-
-    // Check immediately
-    checkHelcimJS();
-    
-    // Check again after a delay to allow for async loading
-    const timer = setTimeout(checkHelcimJS, 2000);
-    
-    return () => clearTimeout(timer);
-  }, []);
 
   // Handle URL parameters on component mount
   useEffect(() => {
@@ -410,11 +380,8 @@ const QuotePage = () => {
           setError('Please fill in all billing address fields');
           return;
         }
-
-        console.log('🚀 Starting HelcimJS payment processing...');
         await processHelcimPayment(totalAmount);
       } else if (paymentMethod === 'financing') {
-        console.log('💰 Processing financing payment...');
         await processFinancingPayment(totalAmount);
       }
 
@@ -430,27 +397,31 @@ const QuotePage = () => {
   const processHelcimPayment = async (amount) => {
     return new Promise((resolve, reject) => {
       try {
-        console.log('🎯 Initializing HelcimJS payment with form-based API...');
 
-        // Check if HelcimJS is loaded
         if (typeof window.helcimProcess !== 'function') {
           throw new Error('HelcimJS not loaded. Please refresh the page and try again.');
         }
 
-        // Create a temporary form with all required fields
         const formId = 'helcimPaymentForm';
         const existingForm = document.getElementById(formId);
         if (existingForm) {
           existingForm.remove();
         }
 
-        // Create form element
         const form = document.createElement('form');
         form.id = formId;
         form.name = 'helcimForm';
         form.style.display = 'none';
+        form.method = 'POST';
+        form.action = 'javascript:void(0);'; // Prevent submission to any URL
 
-        // Create results div (required by HelcimJS)
+        // Prevent form submission
+        form.addEventListener('submit', (e) => {
+          e.preventDefault();
+          e.stopPropagation(); // Stop event bubbling
+          return false;
+        });
+
         let resultsDiv = document.getElementById('helcimResults');
         if (!resultsDiv) {
           resultsDiv = document.createElement('div');
@@ -459,7 +430,6 @@ const QuotePage = () => {
           document.body.appendChild(resultsDiv);
         }
 
-        // Helper function to create hidden input fields
         const createHiddenInput = (name, value) => {
           const input = document.createElement('input');
           input.type = 'hidden';
@@ -469,19 +439,15 @@ const QuotePage = () => {
           return input;
         };
 
-        // Required fields
-        form.appendChild(createHiddenInput('token', HELCIM_CONFIG.token));
+        // Form fields (unchanged)
+        form.appendChild(createHiddenInput('token', import.meta.env.VITE_HELCIM_TOKEN || 'de2a5120a337b055a082b5'));
         form.appendChild(createHiddenInput('amount', amount.toFixed(2)));
         form.appendChild(createHiddenInput('currency', 'USD'));
-        form.appendChild(createHiddenInput('test', '0')); // Set to '1' for test mode
-        form.appendChild(createHiddenInput('dontSubmit', '1')); // Prevent auto form submission
-
-        // Order information
+        form.appendChild(createHiddenInput('test', import.meta.env.VITE_HELCIM_TEST_MODE || '1'));
+        form.appendChild(createHiddenInput('dontSubmit', '1')); // Signal HelcimJS to avoid submission
         form.appendChild(createHiddenInput('orderNumber', `INV-${quote.quote_id || Date.now()}`));
         form.appendChild(createHiddenInput('customerCode', `CUST-${Date.now()}`));
         form.appendChild(createHiddenInput('comments', `${activeTab === 'vsc' ? 'Vehicle Service Contract' : 'Hero Product'} - ConnectedAutoCare`));
-
-        // Billing information (required for credit card processing)
         form.appendChild(createHiddenInput('billing_contactName', `${customerInfo.first_name} ${customerInfo.last_name}`));
         form.appendChild(createHiddenInput('billing_street1', billingInfo.address));
         form.appendChild(createHiddenInput('billing_city', billingInfo.city));
@@ -490,25 +456,14 @@ const QuotePage = () => {
         form.appendChild(createHiddenInput('billing_country', billingInfo.country));
         form.appendChild(createHiddenInput('billing_email', customerInfo.email));
         form.appendChild(createHiddenInput('billing_phone', customerInfo.phone || ''));
-
-        // Credit card fields (these will be filled by user in HelcimJS)
         form.appendChild(createHiddenInput('cardNumber', ''));
         form.appendChild(createHiddenInput('cardExpiry', ''));
         form.appendChild(createHiddenInput('cardCVV', ''));
         form.appendChild(createHiddenInput('cardHolderName', `${customerInfo.first_name} ${customerInfo.last_name}`));
+        form.appendChild(createHiddenInput('cardHolderAddress', billingInfo.address)); // Map to AVS field
+        form.appendChild(createHiddenInput('cardHolderPostalCode', billingInfo.zip_code)); // Map to AVS field
 
-        // Append form to body
         document.body.appendChild(form);
-
-        console.log('📤 HelcimJS form created with fields:', {
-          token: HELCIM_CONFIG.token,
-          amount: amount.toFixed(2),
-          currency: 'USD',
-          orderNumber: `INV-${quote.quote_id || Date.now()}`,
-          customerCode: `CUST-${Date.now()}`,
-          billing_email: customerInfo.email
-        });
-
         // Create a payment collection form/modal for card details
         const createPaymentModal = () => {
           const modal = document.createElement('div');
@@ -644,11 +599,23 @@ const QuotePage = () => {
             processBtn.textContent = 'Processing...';
             processBtn.disabled = true;
 
-            try {
-              // Call HelcimJS process function
-              console.log('🎯 Calling HelcimJS helcimProcess()...');
+            try {              
+              // Show processing message
+              document.getElementById('modalError').innerHTML = `
+                <div style="color: #007bff; display: flex; align-items: center; gap: 8px;">
+                  <div style="width: 16px; height: 16px; border: 2px solid #007bff; border-top: 2px solid transparent; border-radius: 50%; animation: spin 1s linear infinite;"></div>
+                  Processing payment securely...
+                </div>
+                <style>
+                  @keyframes spin {
+                    0% { transform: rotate(0deg); }
+                    100% { transform: rotate(360deg); }
+                  }
+                </style>
+              `;
+              document.getElementById('modalError').style.display = 'block';
+              
               const result = await window.helcimProcess();
-              console.log('✅ HelcimJS response:', result);
 
               // Parse the result (it's HTML with hidden fields)
               const tempDiv = document.createElement('div');
@@ -659,15 +626,26 @@ const QuotePage = () => {
               const responseMessage = tempDiv.querySelector('#responseMessage')?.value;
               const transactionId = tempDiv.querySelector('#transactionId')?.value;
               const cardToken = tempDiv.querySelector('#cardToken')?.value;
-
+              const approvalCode = tempDiv.querySelector('#approvalCode')?.value;
               if (response === '1') {
-                // Success - save transaction data
+                // Success
+                document.getElementById('modalError').innerHTML = `
+                  <div style="color: #28a745; display: flex; align-items: center; gap: 8px;">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                      <path d="M9,20.42L2.79,14.21L5.62,11.38L9,14.77L18.88,4.88L21.71,7.71L9,20.42Z" />
+                    </svg>
+                    Payment successful! Saving transaction...
+                  </div>
+                `;
+
+                // Save transaction data to backend
                 await saveTransactionToDatabase({
                   helcim_response: {
                     response,
                     responseMessage,
                     transactionId,
                     cardToken,
+                    approvalCode,
                     amount: amount.toFixed(2),
                     currency: 'USD'
                   },
@@ -686,44 +664,99 @@ const QuotePage = () => {
                   } : undefined
                 });
 
-                // Create success result
-                const successResult = {
-                  success: true,
-                  transaction_number: transactionId || `TXN-${Date.now()}`,
-                  confirmation_number: `CONF-${Date.now()}`,
-                  amount: amount,
-                  status: 'Approved',
-                  payment_method: 'Credit Card',
-                  customer_info: customerInfo,
-                  processor_transaction_id: transactionId,
-                  next_steps: [
-                    'Your payment has been processed successfully',
-                    'You will receive a confirmation email shortly',
-                    'Your protection plan is now active',
-                    'Keep your confirmation number for your records'
-                  ]
-                };
+                // Show final success message
+                document.getElementById('modalError').innerHTML = `
+                  <div style="color: #28a745; display: flex; align-items: center; gap: 8px;">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                      <path d="M9,20.42L2.79,14.21L5.62,11.38L9,14.77L18.88,4.88L21.71,7.71L9,20.42Z" />
+                    </svg>
+                    Payment completed! Redirecting...
+                  </div>
+                `;
 
-                // Clean up
-                document.body.removeChild(modal);
-                document.body.removeChild(form);
+                // Wait a moment then redirect to success page
+                setTimeout(() => {
+                  // Create success result
+                  const successResult = {
+                    success: true,
+                    transaction_number: transactionId || `TXN-${Date.now()}`,
+                    confirmation_number: `CONF-${transactionId || Date.now()}`,
+                    amount: amount,
+                    status: 'Approved',
+                    payment_method: 'Credit Card',
+                    customer_info: customerInfo,
+                    processor_transaction_id: transactionId,
+                    approval_code: approvalCode,
+                    response_message: responseMessage,
+                    next_steps: [
+                      'Your payment has been processed successfully',
+                      'You will receive a confirmation email shortly',
+                      'Your protection plan is now active',
+                      'Keep your confirmation number for your records'
+                    ]
+                  };
 
-                setPaymentResult(successResult);
-                setShowPayment(false);
-                setError('');
-                resolve(successResult);
+                  // Clean up
+                  document.body.removeChild(modal);
+                  document.body.removeChild(form);
+
+                  setPaymentResult(successResult);
+                  setShowPayment(false);
+                  setError('');
+                  resolve(successResult);
+                }, 1500);
 
               } else {
                 // Payment failed
-                throw new Error(responseMessage || 'Payment processing failed');
+                const errorMsg = responseMessage || 'Payment processing failed';
+                console.error('❌ HelcimJS payment failed:', {
+                  response,
+                  responseMessage,
+                  transactionId
+                });
+
+                document.getElementById('modalError').innerHTML = `
+                  <div style="color: #dc3545; display: flex; align-items: center; gap: 8px;">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                      <path d="M12,2C17.53,2 22,6.47 22,12C22,17.53 17.53,22 12,22C6.47,22 2,17.53 2,12C2,6.47 6.47,2 12,2M15.59,7L12,10.59L8.41,7L7,8.41L10.59,12L7,15.59L8.41,17L12,13.41L15.59,17L17,15.59L13.41,12L17,8.41L15.59,7Z" />
+                    </svg>
+                    Payment failed: ${errorMsg}
+                  </div>
+                `;
+                
+                // Re-enable the process button
+                processBtn.textContent = 'Process Payment';
+                processBtn.disabled = false;
               }
 
             } catch (error) {
               console.error('❌ HelcimJS payment error:', error);
-              document.getElementById('modalError').textContent = error.message || 'Payment processing failed';
-              document.getElementById('modalError').style.display = 'block';
+              
+              let errorMessage = 'Payment processing failed';
+              if (error.message) {
+                errorMessage = error.message;
+              } else if (typeof error === 'string') {
+                errorMessage = error;
+              }
+
+              document.getElementById('modalError').innerHTML = `
+                <div style="color: #dc3545; display: flex; align-items: center; gap: 8px;">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M12,2C17.53,2 22,6.47 22,12C22,17.53 17.53,22 12,22C6.47,22 2,17.53 2,12C2,6.47 6.47,2 12,2M15.59,7L12,10.59L8.41,7L7,8.41L10.59,12L7,15.59L8.41,17L12,13.41L15.59,17L17,15.59L13.41,12L17,8.41L15.59,7Z" />
+                  </svg>
+                  Error: ${errorMessage}
+                </div>
+              `;
+              
+              // Re-enable the process button
               processBtn.textContent = 'Process Payment';
               processBtn.disabled = false;
+              
+              // If it's a network error or validation error, don't close modal
+              if (errorMessage.includes('network') || errorMessage.includes('validation')) {
+                // Keep modal open for retry
+                return;
+              }
             }
           });
 
@@ -756,7 +789,6 @@ const QuotePage = () => {
 
   // Save Transaction to Database
   const saveTransactionToDatabase = async (transactionData) => {
-    console.log('💾 Saving transaction to database...');
 
     const response = await fetch(`${API_BASE_URL}/api/payments/process`, {
       method: 'POST',
@@ -775,13 +807,11 @@ const QuotePage = () => {
       throw new Error(result.error || 'Failed to save transaction data');
     }
 
-    console.log('✅ Transaction saved to database:', result.data);
     return result.data;
   }
 
   // Financing Payment Processing
   const processFinancingPayment = async (amount) => {
-    console.log('💰 Processing financing payment...');
 
     const paymentData = {
       quote_id: quote.quote_id || `QUOTE-${Date.now()}`,
@@ -819,7 +849,6 @@ const QuotePage = () => {
     const result = await response.json();
     
     if (result.success && result.data) {
-      console.log('✅ Financing processed successfully:', result.data);
       
       const successResult = {
         success: true,
