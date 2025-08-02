@@ -53,9 +53,6 @@ const QuotePage = () => {
     country: 'US'
   })
 
-  // Financing states
-  const [financingTerms, setFinancingTerms] = useState('12')
-
   // Hero Products Form State
   const [heroForm, setHeroForm] = useState({
     product_type: '',
@@ -374,16 +371,13 @@ const QuotePage = () => {
 
       const totalAmount = quote.pricing_breakdown?.total_price || quote.pricing?.total_price || 0;
 
-      if (paymentMethod === 'credit_card') {
-        // Validate billing information for credit card payments
-        if (!billingInfo.address || !billingInfo.city || !billingInfo.state || !billingInfo.zip_code || !billingInfo.country) {
-          setError('Please fill in all billing address fields');
-          return;
-        }
-        await processHelcimPayment(totalAmount);
-      } else if (paymentMethod === 'financing') {
-        await processFinancingPayment(totalAmount);
+      // Validate billing information for credit card payments
+      if (!billingInfo.address || !billingInfo.city || !billingInfo.state || !billingInfo.zip_code || !billingInfo.country) {
+        setError('Please fill in all billing address fields');
+        return;
       }
+      
+      await processHelcimPayment(totalAmount);
 
     } catch (err) {
       console.error('💥 Payment error:', err);
@@ -1034,9 +1028,8 @@ const QuotePage = () => {
                   <div className="space-y-4">
                     <h3 className="font-semibold text-lg">Payment Method</h3>
                     <Tabs value={paymentMethod} onValueChange={setPaymentMethod}>
-                      <TabsList className="grid w-full grid-cols-2">
+                      <TabsList className="grid w-full grid-cols-1">
                         <TabsTrigger value="credit_card">Credit Card</TabsTrigger>
-                        <TabsTrigger value="financing">Financing</TabsTrigger>
                       </TabsList>
 
                       <TabsContent value="credit_card" className="space-y-4 mt-6">
@@ -1121,65 +1114,6 @@ const QuotePage = () => {
                           </div>
                         </div>
                       </TabsContent>
-
-                      <TabsContent value="financing" className="space-y-4 mt-6">
-                        {/* Financing Options */}
-                        <div className="space-y-4">
-                          <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
-                            <h4 className="font-medium text-blue-900 mb-2">0% APR Financing Available</h4>
-                            <p className="text-sm text-blue-700">
-                              Pay over time with no interest for qualified customers
-                            </p>
-                          </div>
-                          
-                          <div>
-                            <Label htmlFor="financing_terms">Financing Terms</Label>
-                            <Select
-                              value={financingTerms}
-                              onValueChange={setFinancingTerms}
-                            >
-                              <SelectTrigger>
-                                <SelectValue placeholder="Select terms" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="12">12 months - 0% APR</SelectItem>
-                                <SelectItem value="24">24 months - 0% APR</SelectItem>
-                              </SelectContent>
-                            </Select>
-                          </div>
-
-                          {financingTerms && (
-                            <div className="bg-gray-50 p-4 rounded-lg">
-                              <div className="text-sm space-y-2">
-                                <div className="flex justify-between">
-                                  <span>Total Amount:</span>
-                                  <span className="font-semibold">
-                                    {formatCurrency(quote.pricing_breakdown?.total_price || quote.pricing?.total_price || 0)}
-                                  </span>
-                                </div>
-                                <div className="flex justify-between">
-                                  <span>Monthly Payment:</span>
-                                  <span className="font-semibold">
-                                    {formatCurrency((quote.pricing_breakdown?.total_price || quote.pricing?.total_price || 0) / parseInt(financingTerms))}
-                                  </span>
-                                </div>
-                                <div className="flex justify-between">
-                                  <span>Term:</span>
-                                  <span>{financingTerms} months</span>
-                                </div>
-                                <div className="flex justify-between">
-                                  <span>APR:</span>
-                                  <span className="text-green-600 font-semibold">0%</span>
-                                </div>
-                              </div>
-                            </div>
-                          )}
-
-                          <div className="text-xs text-gray-500">
-                            * Subject to credit approval. Terms and conditions apply.
-                          </div>
-                        </div>
-                      </TabsContent>
                     </Tabs>
                   </div>
 
@@ -1210,7 +1144,7 @@ const QuotePage = () => {
                       ) : (
                         <>
                           <CreditCard className="h-4 w-4 mr-2" />
-                          {paymentMethod === 'credit_card' ? 'Pay with Credit Card' : 'Apply for Financing'}
+                          {'Pay with Credit Card'}
                         </>
                       )}
                     </Button>
@@ -1918,16 +1852,6 @@ const QuotePage = () => {
                     <div>
                       <p className="font-medium">Credit Card</p>
                       <p className="text-muted-foreground text-xs">Visa, MasterCard, American Express, Discover</p>
-                    </div>
-                  </div>
-                  
-                  <div className="flex items-center space-x-3">
-                    <div className="bg-green-100 p-2 rounded">
-                      <DollarSign className="h-4 w-4 text-green-600" />
-                    </div>
-                    <div>
-                      <p className="font-medium">0% APR Financing</p>
-                      <p className="text-muted-foreground text-xs">12 or 24 months • No interest • Quick approval</p>
                     </div>
                   </div>
                 </div>
