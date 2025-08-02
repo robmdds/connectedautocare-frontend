@@ -14,6 +14,12 @@ import { heroAPI, vscAPI, formatCurrency, validateQuoteData, handleAPIError } fr
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
+// HelcimJS Configuration
+const HELCIM_CONFIG = {
+  token: 'de2a5120a337b055a082b5',
+  secretKey: '9a5543515f6624cbddf2bdef246a9d3a86bc3268'
+};
+
 const QuotePage = () => {
   const location = useLocation()
   const [searchParams] = useSearchParams()
@@ -36,15 +42,6 @@ const QuotePage = () => {
     last_name: '',
     email: '',
     phone: ''
-  })
-  
-  // Credit card states
-  const [cardInfo, setCardInfo] = useState({
-    card_number: '',
-    expiry_month: '',
-    expiry_year: '',
-    cvv: '',
-    cardholder_name: ''
   })
   
   // Billing info states
@@ -79,6 +76,36 @@ const QuotePage = () => {
     customer_type: 'retail',
     auto_populated: false
   })
+
+  // Check HelcimJS library availability
+  useEffect(() => {
+    const checkHelcimJS = () => {
+      console.log('🔍 Checking HelcimJS availability...');
+      
+      // Check for the helcimProcess function (this is the main function in the Helcim script)
+      if (typeof window.helcimProcess === 'function') {
+        console.log('✅ HelcimJS helcimProcess function available');
+      } else {
+        console.log('❌ HelcimJS helcimProcess function not found');
+      }
+      
+      // Check if the script tag exists
+      const existingScript = document.querySelector('script[src*="helcim"]');
+      if (existingScript) {
+        console.log('✅ HelcimJS script tag found:', existingScript.src);
+      } else {
+        console.log('❌ HelcimJS script tag not found');
+      }
+    };
+
+    // Check immediately
+    checkHelcimJS();
+    
+    // Check again after a delay to allow for async loading
+    const timer = setTimeout(checkHelcimJS, 2000);
+    
+    return () => clearTimeout(timer);
+  }, []);
 
   // Handle URL parameters on component mount
   useEffect(() => {
@@ -363,112 +390,461 @@ const QuotePage = () => {
     }
   }
 
-  // Credit Card Validation
-  const validateCardNumber = (cardNumber) => {
-    const cleaned = cardNumber.replace(/\s+/g, '').replace(/[^0-9]/gi, '')
-    return cleaned.length >= 13 && cleaned.length <= 19
-  }
-
-  const formatCardNumber = (value) => {
-    const v = value.replace(/\s+/g, '').replace(/[^0-9]/gi, '')
-    const matches = v.match(/\d{4,16}/g)
-    const match = matches && matches[0] || ''
-    const parts = []
-    for (let i = 0, len = match.length; i < len; i += 4) {
-      parts.push(match.substring(i, i + 4))
-    }
-    if (parts.length) {
-      return parts.join(' ')
-    } else {
-      return v
-    }
-  }
-
-  const getCardType = (cardNumber) => {
-    const number = cardNumber.replace(/\s+/g, '')
-    if (number.startsWith('4')) return 'Visa'
-    if (number.startsWith('5') || number.startsWith('2')) return 'MasterCard'
-    if (number.startsWith('3')) return 'American Express'
-    if (number.startsWith('6')) return 'Discover'
-    return 'Unknown'
-  }
-
-  // Payment Processing
+  // Main Payment Processing Function
   const processPayment = async () => {
-    setPaymentLoading(true)
-    setError('')
+    setPaymentLoading(true);
+    setError('');
 
     try {
-      // Validate required fields
+      // Validate required customer information
       if (!customerInfo.first_name || !customerInfo.last_name || !customerInfo.email) {
-        setError('Please fill in all customer information fields')
-        return
+        setError('Please fill in all customer information fields');
+        return;
       }
+
+      const totalAmount = quote.pricing_breakdown?.total_price || quote.pricing?.total_price || 0;
 
       if (paymentMethod === 'credit_card') {
-        if (!cardInfo.card_number || !cardInfo.expiry_month || !cardInfo.expiry_year || !cardInfo.cvv) {
-          setError('Please fill in all credit card fields')
-          return
+        // Validate billing information for credit card payments
+        if (!billingInfo.address || !billingInfo.city || !billingInfo.state || !billingInfo.zip_code || !billingInfo.country) {
+          setError('Please fill in all billing address fields');
+          return;
         }
 
-        if (!validateCardNumber(cardInfo.card_number)) {
-          setError('Please enter a valid credit card number')
-          return
-        }
-
-        if (!billingInfo.address || !billingInfo.city || !billingInfo.state || !billingInfo.zip_code) {
-          setError('Please fill in all billing address fields')
-          return
-        }
+        console.log('🚀 Starting HelcimJS payment processing...');
+        await processHelcimPayment(totalAmount);
+      } else if (paymentMethod === 'financing') {
+        console.log('💰 Processing financing payment...');
+        await processFinancingPayment(totalAmount);
       }
 
-      const totalAmount = quote.pricing_breakdown?.total_price || quote.pricing?.total_price || 0
-      
-      const paymentData = {
-        quote_id: quote.quote_id || `QUOTE-${Date.now()}`,
-        payment_method: paymentMethod,
-        amount: totalAmount,
-        customer_info: customerInfo,
-        card_info: paymentMethod === 'credit_card' ? {
-          ...cardInfo,
-          card_number: cardInfo.card_number.replace(/\s+/g, '')
-        } : undefined,
-        billing_info: paymentMethod === 'credit_card' ? billingInfo : undefined,
-        financing_terms: paymentMethod === 'financing' ? financingTerms : undefined,
-        payment_details: {
-          product_type: activeTab === 'vsc' ? 'vehicle_service_contract' : 'hero_product',
-          coverage_details: quote.coverage_details || {},
-          vehicle_info: activeTab === 'vsc' ? {
-            make: vscForm.make,
-            model: vscForm.model,
-            year: vscForm.year,
-            mileage: vscForm.mileage,
-            vin: vscForm.vin
-          } : undefined
-        }
-      }
-
-      const response = await fetch(`${API_BASE_URL}/api/payments/process`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(paymentData)
-      })
-
-      const result = await response.json()
-
-      if (result.success && result.data) {
-        setPaymentResult(result.data)
-        setShowPayment(false)
-        setError('')
-      } else {
-        setError(result.error || 'Payment processing failed')
-      }
     } catch (err) {
-      setError(`Payment error: ${err.message}`)
+      console.error('💥 Payment error:', err);
+      setError(`Payment failed: ${err.message}`);
     } finally {
-      setPaymentLoading(false)
+      setPaymentLoading(false);
+    }
+  }
+
+  // HelcimJS Payment Processing (Form-based API)
+  const processHelcimPayment = async (amount) => {
+    return new Promise((resolve, reject) => {
+      try {
+        console.log('🎯 Initializing HelcimJS payment with form-based API...');
+
+        // Check if HelcimJS is loaded
+        if (typeof window.helcimProcess !== 'function') {
+          throw new Error('HelcimJS not loaded. Please refresh the page and try again.');
+        }
+
+        // Create a temporary form with all required fields
+        const formId = 'helcimPaymentForm';
+        const existingForm = document.getElementById(formId);
+        if (existingForm) {
+          existingForm.remove();
+        }
+
+        // Create form element
+        const form = document.createElement('form');
+        form.id = formId;
+        form.name = 'helcimForm';
+        form.style.display = 'none';
+
+        // Create results div (required by HelcimJS)
+        let resultsDiv = document.getElementById('helcimResults');
+        if (!resultsDiv) {
+          resultsDiv = document.createElement('div');
+          resultsDiv.id = 'helcimResults';
+          resultsDiv.style.display = 'none';
+          document.body.appendChild(resultsDiv);
+        }
+
+        // Helper function to create hidden input fields
+        const createHiddenInput = (name, value) => {
+          const input = document.createElement('input');
+          input.type = 'hidden';
+          input.id = name;
+          input.name = name;
+          input.value = value || '';
+          return input;
+        };
+
+        // Required fields
+        form.appendChild(createHiddenInput('token', HELCIM_CONFIG.token));
+        form.appendChild(createHiddenInput('amount', amount.toFixed(2)));
+        form.appendChild(createHiddenInput('currency', 'USD'));
+        form.appendChild(createHiddenInput('test', '0')); // Set to '1' for test mode
+        form.appendChild(createHiddenInput('dontSubmit', '1')); // Prevent auto form submission
+
+        // Order information
+        form.appendChild(createHiddenInput('orderNumber', `INV-${quote.quote_id || Date.now()}`));
+        form.appendChild(createHiddenInput('customerCode', `CUST-${Date.now()}`));
+        form.appendChild(createHiddenInput('comments', `${activeTab === 'vsc' ? 'Vehicle Service Contract' : 'Hero Product'} - ConnectedAutoCare`));
+
+        // Billing information (required for credit card processing)
+        form.appendChild(createHiddenInput('billing_contactName', `${customerInfo.first_name} ${customerInfo.last_name}`));
+        form.appendChild(createHiddenInput('billing_street1', billingInfo.address));
+        form.appendChild(createHiddenInput('billing_city', billingInfo.city));
+        form.appendChild(createHiddenInput('billing_province', billingInfo.state));
+        form.appendChild(createHiddenInput('billing_postalCode', billingInfo.zip_code));
+        form.appendChild(createHiddenInput('billing_country', billingInfo.country));
+        form.appendChild(createHiddenInput('billing_email', customerInfo.email));
+        form.appendChild(createHiddenInput('billing_phone', customerInfo.phone || ''));
+
+        // Credit card fields (these will be filled by user in HelcimJS)
+        form.appendChild(createHiddenInput('cardNumber', ''));
+        form.appendChild(createHiddenInput('cardExpiry', ''));
+        form.appendChild(createHiddenInput('cardCVV', ''));
+        form.appendChild(createHiddenInput('cardHolderName', `${customerInfo.first_name} ${customerInfo.last_name}`));
+
+        // Append form to body
+        document.body.appendChild(form);
+
+        console.log('📤 HelcimJS form created with fields:', {
+          token: HELCIM_CONFIG.token,
+          amount: amount.toFixed(2),
+          currency: 'USD',
+          orderNumber: `INV-${quote.quote_id || Date.now()}`,
+          customerCode: `CUST-${Date.now()}`,
+          billing_email: customerInfo.email
+        });
+
+        // Create a payment collection form/modal for card details
+        const createPaymentModal = () => {
+          const modal = document.createElement('div');
+          modal.id = 'helcimPaymentModal';
+          modal.style.cssText = `
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.6);
+            z-index: 10000;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+          `;
+
+          const modalContent = document.createElement('div');
+          modalContent.style.cssText = `
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            max-width: 500px;
+            width: 90%;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+          `;
+
+          modalContent.innerHTML = `
+            <h3 style="margin-bottom: 20px; text-align: center; color: #333;">Secure Payment</h3>
+            <p style="margin-bottom: 20px; color: #666; text-align: center;">
+              Amount: <strong>${amount.toFixed(2)}</strong>
+            </p>
+            
+            <div style="margin-bottom: 15px;">
+              <label style="display: block; margin-bottom: 5px; font-weight: bold;">Card Number *</label>
+              <input type="text" id="modalCardNumber" placeholder="1234 5678 9012 3456" 
+                     style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 16px;" 
+                     maxlength="19">
+            </div>
+            
+            <div style="display: flex; gap: 15px; margin-bottom: 15px;">
+              <div style="flex: 1;">
+                <label style="display: block; margin-bottom: 5px; font-weight: bold;">Expiry Month *</label>
+                <select id="modalCardExpiryMonth" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px;">
+                  <option value="">MM</option>
+                  ${Array.from({length: 12}, (_, i) => `<option value="${String(i + 1).padStart(2, '0')}">${String(i + 1).padStart(2, '0')}</option>`).join('')}
+                </select>
+              </div>
+              <div style="flex: 1;">
+                <label style="display: block; margin-bottom: 5px; font-weight: bold;">Expiry Year *</label>
+                <select id="modalCardExpiryYear" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px;">
+                  <option value="">YYYY</option>
+                  ${Array.from({length: 10}, (_, i) => {
+                    const year = new Date().getFullYear() + i;
+                    return `<option value="${year}">${year}</option>`;
+                  }).join('')}
+                </select>
+              </div>
+              <div style="flex: 1;">
+                <label style="display: block; margin-bottom: 5px; font-weight: bold;">CVV *</label>
+                <input type="text" id="modalCardCVV" placeholder="123" 
+                       style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px;" 
+                       maxlength="4">
+              </div>
+            </div>
+            
+            <div id="modalError" style="color: red; margin-bottom: 15px; display: none;"></div>
+            
+            <div style="display: flex; gap: 10px; justify-content: center;">
+              <button type="button" id="modalProcessBtn" 
+                      style="background: #007bff; color: white; border: none; padding: 12px 24px; border-radius: 4px; cursor: pointer; font-size: 16px;">
+                Process Payment
+              </button>
+              <button type="button" id="modalCancelBtn" 
+                      style="background: #dc3545; color: white; border: none; padding: 12px 24px; border-radius: 4px; cursor: pointer; font-size: 16px;">
+                Cancel
+              </button>
+            </div>
+            
+            <div style="text-align: center; margin-top: 15px; font-size: 12px; color: #666;">
+              <div style="display: flex; align-items: center; justify-content: center; gap: 5px;">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M18,8A6,6 0 0,0 12,2A6,6 0 0,0 6,8H4V20H20V8H18M12,4A4,4 0 0,1 16,8H8A4,4 0 0,1 12,4M12,17A2,2 0 0,1 10,15A2,2 0 0,1 12,13A2,2 0 0,1 14,15A2,2 0 0,1 12,17Z" />
+                </svg>
+                Your payment is secure and encrypted
+              </div>
+            </div>
+          `;
+
+          modal.appendChild(modalContent);
+          document.body.appendChild(modal);
+
+          // Format card number input
+          document.getElementById('modalCardNumber').addEventListener('input', (e) => {
+            let value = e.target.value.replace(/\s+/g, '').replace(/[^0-9]/gi, '');
+            let formattedValue = value.match(/.{1,4}/g)?.join(' ') || value;
+            e.target.value = formattedValue;
+          });
+
+          // Process payment button
+          document.getElementById('modalProcessBtn').addEventListener('click', async () => {
+            const cardNumber = document.getElementById('modalCardNumber').value.replace(/\s+/g, '');
+            const expiryMonth = document.getElementById('modalCardExpiryMonth').value;
+            const expiryYear = document.getElementById('modalCardExpiryYear').value;
+            const cvv = document.getElementById('modalCardCVV').value;
+
+            // Validate fields
+            if (!cardNumber || !expiryMonth || !expiryYear || !cvv) {
+              document.getElementById('modalError').textContent = 'Please fill in all card details';
+              document.getElementById('modalError').style.display = 'block';
+              return;
+            }
+
+            if (cardNumber.length < 13 || cardNumber.length > 19) {
+              document.getElementById('modalError').textContent = 'Please enter a valid card number';
+              document.getElementById('modalError').style.display = 'block';
+              return;
+            }
+
+            if (cvv.length < 3 || cvv.length > 4) {
+              document.getElementById('modalError').textContent = 'Please enter a valid CVV';
+              document.getElementById('modalError').style.display = 'block';
+              return;
+            }
+
+            // Update form with card details
+            document.getElementById('cardNumber').value = cardNumber;
+            document.getElementById('cardExpiry').value = expiryMonth + expiryYear.slice(-2);
+            document.getElementById('cardCVV').value = cvv;
+
+            // Disable button and show processing
+            const processBtn = document.getElementById('modalProcessBtn');
+            processBtn.textContent = 'Processing...';
+            processBtn.disabled = true;
+
+            try {
+              // Call HelcimJS process function
+              console.log('🎯 Calling HelcimJS helcimProcess()...');
+              const result = await window.helcimProcess();
+              console.log('✅ HelcimJS response:', result);
+
+              // Parse the result (it's HTML with hidden fields)
+              const tempDiv = document.createElement('div');
+              tempDiv.innerHTML = result;
+              
+              // Extract response data
+              const response = tempDiv.querySelector('#response')?.value;
+              const responseMessage = tempDiv.querySelector('#responseMessage')?.value;
+              const transactionId = tempDiv.querySelector('#transactionId')?.value;
+              const cardToken = tempDiv.querySelector('#cardToken')?.value;
+
+              if (response === '1') {
+                // Success - save transaction data
+                await saveTransactionToDatabase({
+                  helcim_response: {
+                    response,
+                    responseMessage,
+                    transactionId,
+                    cardToken,
+                    amount: amount.toFixed(2),
+                    currency: 'USD'
+                  },
+                  quote_data: quote,
+                  customer_info: customerInfo,
+                  billing_info: billingInfo,
+                  payment_method: 'credit_card',
+                  amount: amount,
+                  product_type: activeTab,
+                  vehicle_info: activeTab === 'vsc' ? {
+                    make: vscForm.make,
+                    model: vscForm.model,
+                    year: vscForm.year,
+                    mileage: vscForm.mileage,
+                    vin: vscForm.vin
+                  } : undefined
+                });
+
+                // Create success result
+                const successResult = {
+                  success: true,
+                  transaction_number: transactionId || `TXN-${Date.now()}`,
+                  confirmation_number: `CONF-${Date.now()}`,
+                  amount: amount,
+                  status: 'Approved',
+                  payment_method: 'Credit Card',
+                  customer_info: customerInfo,
+                  processor_transaction_id: transactionId,
+                  next_steps: [
+                    'Your payment has been processed successfully',
+                    'You will receive a confirmation email shortly',
+                    'Your protection plan is now active',
+                    'Keep your confirmation number for your records'
+                  ]
+                };
+
+                // Clean up
+                document.body.removeChild(modal);
+                document.body.removeChild(form);
+
+                setPaymentResult(successResult);
+                setShowPayment(false);
+                setError('');
+                resolve(successResult);
+
+              } else {
+                // Payment failed
+                throw new Error(responseMessage || 'Payment processing failed');
+              }
+
+            } catch (error) {
+              console.error('❌ HelcimJS payment error:', error);
+              document.getElementById('modalError').textContent = error.message || 'Payment processing failed';
+              document.getElementById('modalError').style.display = 'block';
+              processBtn.textContent = 'Process Payment';
+              processBtn.disabled = false;
+            }
+          });
+
+          // Cancel button
+          document.getElementById('modalCancelBtn').addEventListener('click', () => {
+            document.body.removeChild(modal);
+            document.body.removeChild(form);
+            reject(new Error('Payment cancelled by user'));
+          });
+
+          // Close on backdrop click
+          modal.addEventListener('click', (e) => {
+            if (e.target === modal) {
+              document.body.removeChild(modal);
+              document.body.removeChild(form);
+              reject(new Error('Payment cancelled by user'));
+            }
+          });
+        };
+
+        // Show payment modal
+        createPaymentModal();
+
+      } catch (error) {
+        console.error('❌ HelcimJS initialization error:', error);
+        reject(error);
+      }
+    });
+  }
+
+  // Save Transaction to Database
+  const saveTransactionToDatabase = async (transactionData) => {
+    console.log('💾 Saving transaction to database...');
+
+    const response = await fetch(`${API_BASE_URL}/api/payments/process`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        action: 'save_transaction',
+        transaction_data: transactionData
+      })
+    });
+
+    const result = await response.json();
+    
+    if (!result.success) {
+      throw new Error(result.error || 'Failed to save transaction data');
+    }
+
+    console.log('✅ Transaction saved to database:', result.data);
+    return result.data;
+  }
+
+  // Financing Payment Processing
+  const processFinancingPayment = async (amount) => {
+    console.log('💰 Processing financing payment...');
+
+    const paymentData = {
+      quote_id: quote.quote_id || `QUOTE-${Date.now()}`,
+      payment_method: 'financing',
+      amount: amount,
+      currency: 'USD',
+      financing_terms: financingTerms,
+      customer_info: {
+        first_name: customerInfo.first_name,
+        last_name: customerInfo.last_name,
+        email: customerInfo.email,
+        phone: customerInfo.phone || ''
+      },
+      payment_details: {
+        product_type: activeTab === 'vsc' ? 'vehicle_service_contract' : 'hero_product',
+        coverage_details: quote.coverage_details || {},
+        vehicle_info: activeTab === 'vsc' ? {
+          make: vscForm.make,
+          model: vscForm.model,
+          year: vscForm.year,
+          mileage: vscForm.mileage,
+          vin: vscForm.vin
+        } : undefined
+      }
+    };
+
+    const response = await fetch(`${API_BASE_URL}/api/payments/process`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(paymentData)
+    });
+
+    const result = await response.json();
+    
+    if (result.success && result.data) {
+      console.log('✅ Financing processed successfully:', result.data);
+      
+      const successResult = {
+        success: true,
+        transaction_number: result.data.transaction_number,
+        confirmation_number: result.data.confirmation_number,
+        amount: amount,
+        status: result.data.status,
+        payment_method: 'Financing',
+        customer_info: customerInfo,
+        financing_details: {
+          terms: financingTerms,
+          monthly_payment: amount / parseInt(financingTerms)
+        },
+        next_steps: result.data.next_steps || [
+          'Your financing application has been approved',
+          'You will receive your payment schedule via email',
+          'Your protection plan is now active'
+        ]
+      };
+
+      setPaymentResult(successResult);
+      setShowPayment(false);
+      setError('');
+    } else {
+      throw new Error(result.error || 'Financing processing failed');
     }
   }
 
@@ -635,98 +1011,19 @@ const QuotePage = () => {
                       </TabsList>
 
                       <TabsContent value="credit_card" className="space-y-4 mt-6">
-                        {/* Credit Card Form */}
-                        <div className="grid grid-cols-1 gap-4">
-                          <div>
-                            <Label htmlFor="card_number">Card Number *</Label>
-                            <div className="relative">
-                              <Input
-                                id="card_number"
-                                placeholder="1234 5678 9012 3456"
-                                value={cardInfo.card_number}
-                                onChange={(e) => setCardInfo({
-                                  ...cardInfo, 
-                                  card_number: formatCardNumber(e.target.value)
-                                })}
-                                maxLength={19}
-                                required
-                              />
-                              <div className="absolute right-3 top-1/2 transform -translate-y-1/2 text-xs text-gray-500">
-                                {getCardType(cardInfo.card_number)}
-                              </div>
-                            </div>
+                        {/* Credit Card Payment Info */}
+                        <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
+                          <div className="flex items-center space-x-2 mb-2">
+                            <CreditCard className="h-5 w-5 text-blue-600" />
+                            <h4 className="font-medium text-blue-900">Secure Credit Card Payment</h4>
                           </div>
-                          
-                          <div>
-                            <Label htmlFor="cardholder_name">Cardholder Name *</Label>
-                            <Input
-                              id="cardholder_name"
-                              placeholder="John Doe"
-                              value={cardInfo.cardholder_name}
-                              onChange={(e) => setCardInfo({...cardInfo, cardholder_name: e.target.value})}
-                              required
-                            />
-                          </div>
-
-                          <div className="grid grid-cols-3 gap-4">
-                            <div>
-                              <Label htmlFor="expiry_month">Month *</Label>
-                              <Select
-                                value={cardInfo.expiry_month}
-                                onValueChange={(value) => setCardInfo({...cardInfo, expiry_month: value})}
-                              >
-                                <SelectTrigger>
-                                  <SelectValue placeholder="MM" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  {Array.from({length: 12}, (_, i) => (
-                                    <SelectItem key={i + 1} value={String(i + 1).padStart(2, '0')}>
-                                      {String(i + 1).padStart(2, '0')}
-                                    </SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
-                            </div>
-                            <div>
-                              <Label htmlFor="expiry_year">Year *</Label>
-                              <Select
-                                value={cardInfo.expiry_year}
-                                onValueChange={(value) => setCardInfo({...cardInfo, expiry_year: value})}
-                              >
-                                <SelectTrigger>
-                                  <SelectValue placeholder="YYYY" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  {Array.from({length: 10}, (_, i) => {
-                                    const year = new Date().getFullYear() + i
-                                    return (
-                                      <SelectItem key={year} value={String(year)}>
-                                        {year}
-                                      </SelectItem>
-                                    )
-                                  })}
-                                </SelectContent>
-                              </Select>
-                            </div>
-                            <div>
-                              <Label htmlFor="cvv">CVV *</Label>
-                              <Input
-                                id="cvv"
-                                placeholder="123"
-                                value={cardInfo.cvv}
-                                onChange={(e) => setCardInfo({
-                                  ...cardInfo, 
-                                  cvv: e.target.value.replace(/\D/g, '')
-                                })}
-                                maxLength={4}
-                                required
-                              />
-                            </div>
-                          </div>
+                          <p className="text-sm text-blue-700">
+                            Your payment will be processed securely through HelcimJS. No card information is stored on our servers.
+                          </p>
                         </div>
 
                         {/* Billing Address */}
-                        <div className="space-y-4 pt-4 border-t">
+                        <div className="space-y-4">
                           <h4 className="font-medium">Billing Address</h4>
                           <div className="grid grid-cols-1 gap-4">
                             <div>
@@ -772,7 +1069,7 @@ const QuotePage = () => {
                                     ...billingInfo, 
                                       zip_code: e.target.value.replace(/\D/g, '')
                                   })}
-                                  maxLength={5}
+                                  maxLength={20}
                                   required
                                 />
                               </div>
@@ -884,7 +1181,7 @@ const QuotePage = () => {
                       ) : (
                         <>
                           <CreditCard className="h-4 w-4 mr-2" />
-                          Complete Purchase
+                          {paymentMethod === 'credit_card' ? 'Pay with Credit Card' : 'Apply for Financing'}
                         </>
                       )}
                     </Button>
@@ -904,6 +1201,11 @@ const QuotePage = () => {
                       <Lock className="h-4 w-4" />
                       <span>Your payment information is encrypted and secure</span>
                     </div>
+                    {paymentMethod === 'credit_card' && (
+                      <p className="text-xs text-gray-500 mt-2">
+                        Powered by HelcimJS - No card data stored on our servers
+                      </p>
+                    )}
                   </div>
                 </CardContent>
               </Card>
