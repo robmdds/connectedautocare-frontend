@@ -1,6 +1,6 @@
 import React from 'react'
 import { motion } from 'framer-motion'
-import { Shield, Users, Award, Clock, CheckCircle, Target, Heart, Zap } from 'lucide-react'
+import { Shield, Users, Award, Clock, CheckCircle, Target, Heart, Zap, Car, Home } from 'lucide-react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card'
 import { Badge } from '../components/ui/badge'
 
@@ -35,54 +35,26 @@ const AboutPage = () => {
     }
   ]
 
-  const team = [
+  const commitments = [
     {
-      name: "Sarah Johnson",
-      role: "Chief Executive Officer",
-      description: "20+ years in insurance industry leadership, focused on customer-centric protection solutions."
+      icon: Heart,
+      title: "Exceptional Service",
+      description: "Our mission is simple: to provide exceptional service, versatile coverage options, and unwavering dedication to quality in every plan we offer."
     },
     {
-      name: "Michael Rodriguez",
-      role: "Chief Technology Officer", 
-      description: "Expert in insurance technology and digital transformation with proven track record in fintech."
+      icon: Users,
+      title: "High-Level Customer Care",
+      description: "Driven by a high-level commitment to customer care, we ensure that every interaction you have with us exceeds your expectations. From initial inquiries to ongoing support, our knowledgeable and friendly team is dedicated to providing personalized attention and assistance every step of the way."
     },
     {
-      name: "Jennifer Chen",
-      role: "Head of Customer Success",
-      description: "Dedicated to ensuring exceptional customer experiences and satisfaction across all touchpoints."
+      icon: Target,
+      title: "Versatile Coverage Plans",
+      description: "Recognizing that no two drivers are alike, we've built our versatile selection of coverage plans to fit a wide array of needs and lifestyles. Whether you're seeking comprehensive protection, tailored coverages for specific concerns, or affordable basic options, Connected Auto Care has you covered."
     },
     {
-      name: "David Thompson",
-      role: "Director of Operations",
-      description: "Operations excellence specialist with expertise in claims processing and service delivery."
-    }
-  ]
-
-  const milestones = [
-    {
-      year: "2020",
-      title: "Company Founded",
-      description: "ConnectedAutoCare.com launched with a mission to provide professional protection plans with exceptional service."
-    },
-    {
-      year: "2021", 
-      title: "Hero Products Launch",
-      description: "Introduced comprehensive Hero protection products for home, auto, and deductible reimbursement."
-    },
-    {
-      year: "2022",
-      title: "VSC Platform",
-      description: "Launched advanced Vehicle Service Contract platform with real-time rating and instant quotes."
-    },
-    {
-      year: "2023",
-      title: "Nationwide Expansion",
-      description: "Expanded coverage to all 50 states with licensed administrators and professional service network."
-    },
-    {
-      year: "2024",
-      title: "Technology Innovation",
-      description: "Deployed AI-powered rating engine and automated contract generation for enhanced customer experience."
+      icon: Shield,
+      title: "Quality Coverage",
+      description: "Above all, our dedication to quality coverage means peace of mind for you. We carefully select and continuously evaluate our plans and partners, ensuring that you receive reliable, effective, and hassle-free coverage whenever and wherever you need it."
     }
   ]
 
@@ -191,9 +163,12 @@ const AboutPage = () => {
               <div className="bg-primary/5 rounded-2xl p-8">
                 <div className="aspect-square bg-primary/10 rounded-lg flex items-center justify-center">
                   <div className="text-center space-y-4">
-                    <Shield className="h-16 w-16 mx-auto text-primary" />
-                    <h3 className="text-xl font-semibold">Professional Protection</h3>
-                    <p className="text-muted-foreground">Industry-leading coverage with personal service</p>
+                    <div className="flex justify-center space-x-2">
+                      <Car className="h-8 w-8 text-primary" />
+                      <Home className="h-8 w-8 text-primary" />
+                    </div>
+                    <h3 className="text-xl font-semibold">Vehicle & Home Protection</h3>
+                    <p className="text-muted-foreground">Protecting your journey and your destination</p>
                   </div>
                 </div>
               </div>
@@ -242,7 +217,7 @@ const AboutPage = () => {
         </div>
       </section>
 
-      {/* Timeline Section */}
+      {/* New Commitment Section */}
       <section className="py-20">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <motion.div
@@ -250,93 +225,64 @@ const AboutPage = () => {
             whileInView={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8 }}
             viewport={{ once: true }}
-            className="text-center space-y-4 mb-16"
+            className="text-center space-y-6 mb-16"
           >
-            <h2 className="text-3xl lg:text-4xl font-bold">Our Journey</h2>
-            <p className="text-xl text-muted-foreground max-w-3xl mx-auto">
-              From startup to industry leader - the milestones that shaped ConnectedAutoCare.com.
-            </p>
-          </motion.div>
-
-          <div className="relative">
-            {/* Timeline line */}
-            <div className="absolute left-1/2 transform -translate-x-1/2 w-1 bg-primary/20 h-full hidden lg:block"></div>
-            
-            <div className="space-y-12">
-              {milestones.map((milestone, index) => (
-                <motion.div
-                  key={milestone.year}
-                  initial={{ opacity: 0, y: 20 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.8, delay: index * 0.1 }}
-                  viewport={{ once: true }}
-                  className={`flex items-center ${index % 2 === 0 ? 'lg:flex-row' : 'lg:flex-row-reverse'}`}
-                >
-                  <div className="flex-1 lg:pr-8">
-                    <Card className={`card-hover ${index % 2 === 0 ? 'lg:text-right' : 'lg:text-left'}`}>
-                      <CardHeader>
-                        <div className="flex items-center space-x-2">
-                          <Badge className="bg-primary text-primary-foreground">{milestone.year}</Badge>
-                        </div>
-                        <CardTitle className="text-xl">{milestone.title}</CardTitle>
-                      </CardHeader>
-                      <CardContent>
-                        <CardDescription className="text-base">{milestone.description}</CardDescription>
-                      </CardContent>
-                    </Card>
-                  </div>
-                  
-                  {/* Timeline dot */}
-                  <div className="hidden lg:block relative">
-                    <div className="w-4 h-4 bg-primary rounded-full border-4 border-white shadow-lg"></div>
-                  </div>
-                  
-                  <div className="flex-1 lg:pl-8"></div>
-                </motion.div>
-              ))}
+            <h2 className="text-3xl lg:text-4xl font-bold">Our Commitment to You</h2>
+            <div className="max-w-4xl mx-auto space-y-6">
+              <p className="text-xl text-muted-foreground leading-relaxed">
+                At Connected Auto Care, we understand that protecting your vehicle and your Home means protecting your journey and your destination.
+              </p>
             </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Team Section */}
-      <section className="py-20 bg-gray-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8 }}
-            viewport={{ once: true }}
-            className="text-center space-y-4 mb-16"
-          >
-            <h2 className="text-3xl lg:text-4xl font-bold">Leadership Team</h2>
-            <p className="text-xl text-muted-foreground max-w-3xl mx-auto">
-              Meet the experienced professionals leading ConnectedAutoCare.com to new heights.
-            </p>
           </motion.div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
-            {team.map((member, index) => (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+            {commitments.map((commitment, index) => (
               <motion.div
-                key={member.name}
+                key={commitment.title}
                 initial={{ opacity: 0, y: 20 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.8, delay: index * 0.1 }}
                 viewport={{ once: true }}
               >
-                <Card className="card-hover h-full text-center">
+                <Card className="card-hover h-full">
                   <CardContent className="pt-6">
-                    <div className="bg-primary/10 p-4 rounded-full w-fit mx-auto mb-4">
-                      <Users className="h-8 w-8 text-primary" />
+                    <div className="flex items-start space-x-4">
+                      <div className="bg-primary/10 p-3 rounded-full flex-shrink-0">
+                        <commitment.icon className="h-6 w-6 text-primary" />
+                      </div>
+                      <div className="space-y-3">
+                        <h3 className="font-semibold text-lg">{commitment.title}</h3>
+                        <p className="text-muted-foreground leading-relaxed">{commitment.description}</p>
+                      </div>
                     </div>
-                    <h3 className="font-semibold text-lg mb-1">{member.name}</h3>
-                    <p className="text-primary font-medium mb-3">{member.role}</p>
-                    <p className="text-sm text-muted-foreground">{member.description}</p>
                   </CardContent>
                 </Card>
               </motion.div>
             ))}
           </div>
+
+          {/* Closing Statement */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8, delay: 0.4 }}
+            viewport={{ once: true }}
+            className="text-center mt-16"
+          >
+            <Card className="max-w-4xl mx-auto">
+              <CardContent className="pt-8 pb-8">
+                <div className="space-y-4">
+                  <div className="bg-primary/10 p-4 rounded-full w-fit mx-auto">
+                    <Shield className="h-8 w-8 text-primary" />
+                  </div>
+                  <h3 className="text-2xl font-bold text-primary">Choose Connected Auto Care</h3>
+                  <p className="text-lg text-muted-foreground font-medium">
+                    Because your peace of mind deserves a partner committed to excellence.
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+          </motion.div>
         </div>
       </section>
 
@@ -369,4 +315,3 @@ const AboutPage = () => {
 }
 
 export default AboutPage
-
