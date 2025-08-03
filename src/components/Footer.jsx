@@ -21,7 +21,7 @@ const Footer = () => {
               </div>
             </div>
             <p className="text-gray-400 text-sm">
-              Your trusted partner for comprehensive insurance protection plans. 
+              Your trusted partner for comprehensive protection plans. 
               Protecting what matters most with professional service and competitive rates.
             </p>
             <div className="flex space-x-4">
@@ -113,7 +113,7 @@ const Footer = () => {
               <div className="flex items-start space-x-3">
                 <MapPin className="h-4 w-4 text-primary mt-1" />
                 <div className="text-gray-400">
-                  <p>Professional Insurance Services</p>
+                  <p>Protection that pays</p>
                   <p>Nationwide Coverage</p>
                   <p>United States</p>
                 </div>

@@ -37,7 +37,7 @@ const Header = () => {
               </div>
             </div>
             <div className="hidden md:flex items-center space-x-4">
-              <span>Professional Insurance Protection</span>
+              <span>Protection that pays</span>
             </div>
           </div>
         </div>

@@ -1817,7 +1817,6 @@ const QuotePage = () => {
                     <li>• Dashboard (driver's side, visible through windshield)</li>
                     <li>• Driver's side door jamb sticker</li>
                     <li>• Vehicle registration or title</li>
-                    <li>• Insurance documents</li>
                   </ul>
                   <p className="text-muted-foreground">
                     The VIN automatically fills vehicle details and checks eligibility for our service contracts.

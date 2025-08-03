@@ -134,7 +134,7 @@ const AboutPage = () => {
               <div className="space-y-4">
                 <p className="text-lg">
                   At ConnectedAutoCare.com, we believe that everyone deserves access to professional protection 
-                  plans without the complexity and high costs traditionally associated with insurance products.
+                  plans without the complexity and high costs traditionally associated with protection products.
                 </p>
                 <p className="text-lg">
                   Our team of licensed professionals works tirelessly to deliver exceptional service, 

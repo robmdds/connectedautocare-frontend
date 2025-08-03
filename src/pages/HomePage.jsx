@@ -265,7 +265,7 @@ const HomePage = () => {
             >
               <div className="space-y-4">
                 <Badge className="bg-white/20 text-white border-white/30">
-                  Professional Insurance Protection
+                  Protection that pays
                 </Badge>
                 <h1 className="text-4xl lg:text-6xl font-bold leading-tight">
                   Protect What Matters Most

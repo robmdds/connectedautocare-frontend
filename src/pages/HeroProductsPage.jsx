@@ -171,7 +171,7 @@ const HeroProductsPage = () => {
     const descriptions = {
       'Home Protection Plan': 'Comprehensive home protection plan including deductible reimbursement for covered claims, glass repair coverage, lockout assistance, and emergency services.',
       'Comprehensive Auto Protection': 'All-inclusive automotive protection plan covering deductible reimbursement, dent repair, emergency roadside assistance, and more.',
-      'Home Deductible Reimbursement': 'Specialized coverage for home insurance deductibles with additional identity theft restoration and warranty vault services.',
+      'Home Deductible Reimbursement': 'Specialized coverage for home protection deductibles with additional identity theft restoration and warranty vault services.',
       'Auto Advantage Deductible Reimbursement': 'Targeted deductible reimbursement for a single vehicle with additional identity restoration and warranty vault services.',
       'Multi Vehicle Deductible Reimbursement': 'Flexible deductible reimbursement plan covering multiple vehicles with the ability to add or remove vehicles during the coverage term.',
       'All Vehicle Deductible Reimbursement': 'Comprehensive deductible reimbursement covering cars, motorcycles, ATVs, boats, and RVs.',
@@ -185,7 +185,7 @@ const HeroProductsPage = () => {
     const shortDescriptions = {
       'Home Protection Plan': 'Complete home protection coverage',
       'Comprehensive Auto Protection': 'Complete automotive protection package',
-      'Home Deductible Reimbursement': 'Home insurance deductible coverage',
+      'Home Deductible Reimbursement': 'Home protection deductible coverage',
       'Auto Advantage Deductible Reimbursement': 'Single vehicle deductible coverage',
       'Multi Vehicle Deductible Reimbursement': 'Multiple vehicle protection plan',
       'All Vehicle Deductible Reimbursement': 'Multi-vehicle protection coverage',
@@ -205,14 +205,14 @@ const HeroProductsPage = () => {
         'HVAC emergency coverage'
       ],
       'COMPREHENSIVE_AUTO_PROTECTION': [
-        'Auto insurance deductible reimbursement',
+        'Auto protection deductible reimbursement',
         'Paintless dent repair coverage',
         '24/7 emergency roadside assistance',
         'Towing and labor coverage',
         'Rental car assistance'
       ],
       'HOME_DEDUCTIBLE_REIMBURSEMENT': [
-        'Home insurance deductible reimbursement',
+        'Home protection deductible reimbursement',
         'Identity theft restoration services',
         'Warranty vault document storage',
         '24/7 customer support',
@@ -299,7 +299,7 @@ const HeroProductsPage = () => {
         category: 'home_protection',
         category_name: 'Home Protection',
         description: generateProductDescription('Home Deductible Reimbursement'),
-        short_description: 'Home insurance deductible coverage',
+        short_description: 'Home protection deductible coverage',
         base_price: 160,
         min_price: 160,
         max_price: 255,
@@ -353,7 +353,7 @@ const HeroProductsPage = () => {
     },
     {
       title: "Professional Service",
-      description: "Expert customer service and support from licensed insurance professionals."
+      description: "Expert customer service and support from licensed professionals."
     }
   ]
 
@@ -373,7 +373,7 @@ const HeroProductsPage = () => {
     {
       name: "Jennifer L.",
       product: "Deductible Reimbursement",
-      content: "Saved me hundreds on my insurance deductible. Worth every penny!",
+      content: "Saved me hundreds on my protection deductible. Worth every penny!",
       rating: 5
     }
   ]
