@@ -990,7 +990,7 @@ function PricingForm({ product, systemSettings, onSave, onCancel }) {
                             </div>
                             <div className="flex justify-between">
                               <span>Admin Fee:</span>
-                              <span className="font-mono">${retailPreview.admin_fee}</span>
+                              <span className="font-mono">${systemSettings?.fees?.admin_fee}</span>
                             </div>
                             <div className="flex justify-between">
                               <span>Tax ({((systemSettings?.taxes?.default_tax_rate || 0.08) * 100).toFixed(1)}%):</span>
@@ -1050,7 +1050,7 @@ function PricingForm({ product, systemSettings, onSave, onCancel }) {
                             </div>
                             <div className="flex justify-between">
                               <span>Admin Fee:</span>
-                              <span className="font-mono">${wholesalePreview.admin_fee}</span>
+                              <span className="font-mono">${systemSettings?.fees?.admin_fee}</span>
                             </div>
                             <div className="flex justify-between">
                               <span>Tax:</span>
