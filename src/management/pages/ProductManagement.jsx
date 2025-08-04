@@ -287,44 +287,7 @@ export default function EnhancedProductManagement() {
         </Alert>
       )}
 
-      {/* NEW: System Settings Status */}
-      {systemSettings && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center">
-              <Database className="w-5 h-5 mr-2" />
-              Current System Settings
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-              <div>
-                <div className="font-medium text-gray-700">Admin Fee</div>
-                <div className="font-mono">${systemSettings.fees?.admin_fee ?? 25}</div>
-              </div>
-              <div>
-                <div className="font-medium text-gray-700">Wholesale Discount</div>
-                <div className="font-mono">{((systemSettings.discounts?.wholesale_discount_rate ?? 0.15) * 100).toFixed(1)}%</div>
-              </div>
-              <div>
-                <div className="font-medium text-gray-700">Tax Rate</div>
-                <div className="font-mono">{((systemSettings.taxes?.default_tax_rate || 0.08) * 100).toFixed(1)}%</div>
-              </div>
-              <div>
-                <div className="font-medium text-gray-700">Source</div>
-                <div className="flex items-center">
-                  {systemSettings.database_driven ? (
-                    <><CheckCircle className="w-4 h-4 text-green-500 mr-1" />Database</>
-                  ) : (
-                    <><AlertCircle className="w-4 h-4 text-orange-500 mr-1" />Fallback</>
-                  )}
-                </div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
+      
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
