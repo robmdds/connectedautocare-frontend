@@ -199,17 +199,20 @@ export default function EnhancedProductManagement() {
       const response = await apiCall(`/api/admin/pricing/${productCode}`, {
         method: 'PUT',
         body: JSON.stringify(pricingData)
-      })
+      });
       
       if (response.success) {
-        await loadProducts()
-        showNotification('Pricing updated successfully')
-        setShowPricingDialog(false)
-        setSelectedProduct(null)
+        await loadProducts();
+        showNotification('Pricing updated successfully');
+      } else {
+        showNotification('Failed to update pricing: Invalid response', 'error');
       }
     } catch (error) {
-      console.error('Failed to update pricing:', error)
-      showNotification('Failed to update pricing', 'error')
+      console.error('Failed to update pricing:', error);
+      showNotification('Failed to update pricing', 'error');
+    } finally {
+      setShowPricingDialog(false);
+      setSelectedProduct(null);
     }
   }
 
