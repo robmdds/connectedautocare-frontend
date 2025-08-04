@@ -76,47 +76,77 @@ const QuotePage = () => {
     auto_populated: false
   })
 
-  // Add useEffect to fetch products on component mount
+  // Fetch Hero Products on mount
   useEffect(() => {
     const fetchHeroProducts = async () => {
       try {
         setHeroProductsLoading(true)
         const response = await fetch(`${API_BASE_URL}/api/hero/products`)
-        const result = await response.json()
+        const rawResult = await response.json()
         
-        if (result.success && result.data) {
-          // Map backend product types to UI-friendly format
+        // Handle array response format [data, statusCode]
+        const result = Array.isArray(rawResult) ? rawResult[0] : rawResult
+        
+        if (result.success && result.data && result.data.products) {
+          // Map backend product codes to UI-friendly format
           const productMap = {
-            'home_protection': { label: 'Home Protection Plan', icon: Home },
-            'comprehensive_auto_protection': { label: 'Comprehensive Auto Protection', icon: Car },
-            'home_deductible_reimbursement': { label: 'Home Deductible Reimbursement', icon: Shield },
-            'auto_advantage_deductible_reimbursement': { label: 'Auto Advantage DDR', icon: Car },
-            'all_vehicle_deductible_reimbursement': { label: 'All Vehicle DDR', icon: Car },
-            'auto_rv_deductible_reimbursement': { label: 'Auto & RV DDR', icon: Car },
-            'multi_vehicle_deductible_reimbursement': { label: 'Multi Vehicle DDR', icon: Car },
-            'hero_level_protection_home': { label: 'Hero Level Protection Home', icon: Shield }
+            'HOME_PROTECTION_PLAN': { label: 'Home Protection Plan', icon: Home },
+            'COMPREHENSIVE_AUTO_PROTECTION': { label: 'Comprehensive Auto Protection', icon: Car },
+            'HOME_DEDUCTIBLE_REIMBURSEMENT': { label: 'Home Deductible Reimbursement', icon: Shield },
+            'AUTO_ADVANTAGE_DEDUCTIBLE_REIMBURSEMENT': { label: 'Auto Advantage DDR ($500)', icon: Car },
+            'AUTO_ADVANTAGE_DEDUCTIBLE_REIMBURSEMENT_1000': { label: 'Auto Advantage DDR ($1000)', icon: Car },
+            'ALL_VEHICLE_DEDUCTIBLE_REIMBURSEMENT': { label: 'All Vehicle DDR ($500)', icon: Car },
+            'ALL_VEHICLE_DEDUCTIBLE_REIMBURSEMENT_1000': { label: 'All Vehicle DDR ($1000)', icon: Car },
+            'AUTO_RV_DEDUCTIBLE_REIMBURSEMENT': { label: 'Auto & RV DDR ($500)', icon: Car },
+            'AUTO_RV_DEDUCTIBLE_REIMBURSEMENT_1000': { label: 'Auto & RV DDR ($1000)', icon: Car },
+            'MULTI_VEHICLE_DEDUCTIBLE_REIMBURSEMENT': { label: 'Multi Vehicle DDR ($500)', icon: Car },
+            'MULTI_VEHICLE_DEDUCTIBLE_REIMBURSEMENT_1000': { label: 'Multi Vehicle DDR ($1000)', icon: Car },
+            'HERO_LEVEL_PROTECTION_FOR_YOUR_HOME': { label: 'Hero Level Protection Home', icon: Shield }
           }
           
-          const mappedProducts = result.data.map(productType => ({
-            value: productType,
-            label: productMap[productType]?.label || productType.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()),
-            icon: productMap[productType]?.icon || Shield
+          const mappedProducts = result.data.products.map(product => ({
+            value: product.product_code.toLowerCase(), // Convert to lowercase to match backend expectations
+            label: productMap[product.product_code]?.label || product.product_name,
+            icon: productMap[product.product_code]?.icon || Shield,
+            basePrice: product.base_price,
+            pricing: product.pricing
           }))
           
           setHeroProducts(mappedProducts)
+        } else {
+          console.warn('Invalid API response structure:', result)
+          // Fallback to hard-coded list with corrected values
+          setHeroProducts([
+            { value: 'home_protection_plan', label: 'Home Protection Plan', icon: Home },
+            { value: 'comprehensive_auto_protection', label: 'Comprehensive Auto Protection', icon: Car },
+            { value: 'home_deductible_reimbursement', label: 'Home Deductible Reimbursement', icon: Shield },
+            { value: 'auto_advantage_deductible_reimbursement', label: 'Auto Advantage DDR ($500)', icon: Car },
+            { value: 'auto_advantage_deductible_reimbursement_1000', label: 'Auto Advantage DDR ($1000)', icon: Car },
+            { value: 'all_vehicle_deductible_reimbursement', label: 'All Vehicle DDR ($500)', icon: Car },
+            { value: 'all_vehicle_deductible_reimbursement_1000', label: 'All Vehicle DDR ($1000)', icon: Car },
+            { value: 'auto_rv_deductible_reimbursement', label: 'Auto & RV DDR ($500)', icon: Car },
+            { value: 'auto_rv_deductible_reimbursement_1000', label: 'Auto & RV DDR ($1000)', icon: Car },
+            { value: 'multi_vehicle_deductible_reimbursement', label: 'Multi Vehicle DDR ($500)', icon: Car },
+            { value: 'multi_vehicle_deductible_reimbursement_1000', label: 'Multi Vehicle DDR ($1000)', icon: Car },
+            { value: 'hero_level_protection_for_your_home', label: 'Hero Level Protection Home', icon: Shield }
+          ])
         }
       } catch (err) {
         console.error('Failed to fetch hero products:', err)
         // Fallback to hard-coded list with corrected values
         setHeroProducts([
-          { value: 'home_protection', label: 'Home Protection Plan', icon: Home },
+          { value: 'home_protection_plan', label: 'Home Protection Plan', icon: Home },
           { value: 'comprehensive_auto_protection', label: 'Comprehensive Auto Protection', icon: Car },
           { value: 'home_deductible_reimbursement', label: 'Home Deductible Reimbursement', icon: Shield },
-          { value: 'auto_advantage_deductible_reimbursement', label: 'Auto Advantage DDR', icon: Car },
-          { value: 'all_vehicle_deductible_reimbursement', label: 'All Vehicle DDR', icon: Car },
-          { value: 'auto_rv_deductible_reimbursement', label: 'Auto & RV DDR', icon: Car },
-          { value: 'multi_vehicle_deductible_reimbursement', label: 'Multi Vehicle DDR', icon: Car },
-          { value: 'hero_level_protection_home', label: 'Hero Level Protection Home', icon: Shield }
+          { value: 'auto_advantage_deductible_reimbursement', label: 'Auto Advantage DDR ($500)', icon: Car },
+          { value: 'auto_advantage_deductible_reimbursement_1000', label: 'Auto Advantage DDR ($1000)', icon: Car },
+          { value: 'all_vehicle_deductible_reimbursement', label: 'All Vehicle DDR ($500)', icon: Car },
+          { value: 'all_vehicle_deductible_reimbursement_1000', label: 'All Vehicle DDR ($1000)', icon: Car },
+          { value: 'auto_rv_deductible_reimbursement', label: 'Auto & RV DDR ($500)', icon: Car },
+          { value: 'auto_rv_deductible_reimbursement_1000', label: 'Auto & RV DDR ($1000)', icon: Car },
+          { value: 'multi_vehicle_deductible_reimbursement', label: 'Multi Vehicle DDR ($500)', icon: Car },
+          { value: 'multi_vehicle_deductible_reimbursement_1000', label: 'Multi Vehicle DDR ($1000)', icon: Car },
+          { value: 'hero_level_protection_for_your_home', label: 'Hero Level Protection Home', icon: Shield }
         ])
       } finally {
         setHeroProductsLoading(false)
