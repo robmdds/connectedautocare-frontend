@@ -29,32 +29,83 @@ export default function EnhancedProductManagement() {
   const [filterCategory, setFilterCategory] = useState('all')
 
   useEffect(() => {
-    loadProducts()
-    loadSystemSettings() // NEW: Load system settings
+    // Load both system settings and products concurrently
+    loadData()
   }, [])
 
-  // NEW: Load system settings
+  // FIXED: Combined data loading function
+  const loadData = async () => {
+    try {
+      setLoading(true)
+      
+      // Load system settings and products concurrently
+      const [settingsResult, productsResult] = await Promise.allSettled([
+        loadSystemSettings(),
+        loadProducts()
+      ])
+
+      // Handle any failures
+      if (settingsResult.status === 'rejected') {
+        console.error('Failed to load system settings:', settingsResult.reason)
+        showNotification('Failed to load system settings, using fallback values', 'warning')
+      }
+
+      if (productsResult.status === 'rejected') {
+        console.error('Failed to load products:', productsResult.reason)
+        showNotification('Failed to load products', 'error')
+      }
+
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  // FIXED: Improved system settings loading with better error handling
   const loadSystemSettings = async () => {
     try {
-      const [response, stausCode] = await apiCall('/api/admin/system-settings')
-      if (response.success) {
-        setSystemSettings({
-        fees: response.data.settings.fees,
-        discounts: response.data.settings.discounts,
-        taxes: response.data.settings.taxes,
-        hero_settings: response.data.settings.hero_settings,
-        database_driven: response.data.database_driven,
-        timestamp: response.data.timestamp
-      })
+      console.log('Loading system settings...')
+      const response = await apiCall('/api/admin/system-settings')
+      
+      // Handle array response format
+      let actualResponse = response
+      if (Array.isArray(response) && response.length >= 1) {
+        actualResponse = response[0]
+      }
+
+      console.log('System settings response:', actualResponse)
+
+      if (actualResponse && actualResponse.success && actualResponse.data) {
+        const settingsData = {
+          fees: actualResponse.data.settings?.fees || { admin_fee: 25.00, processing_fee: 15.00 },
+          discounts: actualResponse.data.settings?.discounts || { wholesale_discount_rate: 0.15 },
+          taxes: actualResponse.data.settings?.taxes || { default_tax_rate: 0.08 },
+          hero_settings: actualResponse.data.settings?.hero_settings || {},
+          database_driven: actualResponse.data.database_driven ?? true,
+          timestamp: actualResponse.data.timestamp || new Date().toISOString()
+        }
+        
+        console.log('Setting system settings:', settingsData)
+        setSystemSettings(settingsData)
+        return settingsData
+      } else {
+        throw new Error('Invalid response structure')
       }
     } catch (error) {
       console.error('Failed to load system settings:', error)
-      // Set fallback settings
-      setSystemSettings({
+      
+      // Set fallback settings with database_driven = false to indicate fallback
+      const fallbackSettings = {
         fees: { admin_fee: 25.00, processing_fee: 15.00 },
         discounts: { wholesale_discount_rate: 0.15 },
-        taxes: { default_tax_rate: 0.08 }
-      })
+        taxes: { default_tax_rate: 0.08 },
+        hero_settings: {},
+        database_driven: false,
+        timestamp: new Date().toISOString()
+      }
+      
+      console.log('Using fallback settings:', fallbackSettings)
+      setSystemSettings(fallbackSettings)
+      throw error // Re-throw to be caught by Promise.allSettled
     }
   }
 
@@ -63,9 +114,10 @@ export default function EnhancedProductManagement() {
     setTimeout(() => setNotification(null), 5000)
   }
 
+  // FIXED: Simplified products loading that doesn't interfere with system settings
   const loadProducts = async () => {
     try {
-      setLoading(true)
+      console.log('Loading products...')
       const response = await apiCall('/api/admin/products')
       
       let actualResponse = response
@@ -77,6 +129,8 @@ export default function EnhancedProductManagement() {
       if (actualResponse && actualResponse.success && actualResponse.data) {
         responseData = actualResponse.data
       }
+
+      console.log('Products response data:', responseData)
 
       if (responseData.products && Array.isArray(responseData.products)) {
         const heroProductsObj = {}
@@ -104,18 +158,19 @@ export default function EnhancedProductManagement() {
           }
         })
         
+        console.log('Setting hero products:', heroProductsObj)
         setHeroProducts(heroProductsObj)
         
-        // NEW: Update system settings from response if available
-        if (responseData.system_settings) {
+        // FIXED: Only update system settings from products response if not already loaded
+        // and if the response contains system settings
+        if (responseData.system_settings && !systemSettings) {
+          console.log('Updating system settings from products response')
           setSystemSettings(responseData.system_settings)
         }
       }
     } catch (error) {
       console.error('Failed to load products:', error)
-      showNotification('Failed to load products', 'error')
-    } finally {
-      setLoading(false)
+      throw error // Re-throw to be caught by Promise.allSettled
     }
   }
 
@@ -269,7 +324,8 @@ export default function EnhancedProductManagement() {
     return matchesSearch && matchesCategory
   })
 
-  if (loading) {
+  // FIXED: Show loading until both system settings and products are loaded
+  if (loading || !systemSettings) {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
@@ -280,9 +336,14 @@ export default function EnhancedProductManagement() {
   return (
     <div className="space-y-6">
       {notification && (
-        <Alert className={notification.type === 'error' ? 'border-red-500 bg-red-50' : 'border-green-500 bg-green-50'}>
-          {notification.type === 'error' ? <AlertCircle className="h-4 w-4" /> : <CheckCircle className="h-4 w-4" />}
-          <AlertTitle>{notification.type === 'error' ? 'Error' : 'Success'}</AlertTitle>
+        <Alert className={notification.type === 'error' ? 'border-red-500 bg-red-50' : 
+                         notification.type === 'warning' ? 'border-yellow-500 bg-yellow-50' :
+                         'border-green-500 bg-green-50'}>
+          {notification.type === 'error' ? <AlertCircle className="h-4 w-4" /> : 
+           notification.type === 'warning' ? <AlertCircle className="h-4 w-4" /> :
+           <CheckCircle className="h-4 w-4" />}
+          <AlertTitle>{notification.type === 'error' ? 'Error' : 
+                       notification.type === 'warning' ? 'Warning' : 'Success'}</AlertTitle>
           <AlertDescription>{notification.message}</AlertDescription>
         </Alert>
       )}
@@ -293,12 +354,9 @@ export default function EnhancedProductManagement() {
           <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
             Product Management
           </h1>
-          <p className="text-gray-600 dark:text-gray-400 mt-1">
-            Manage your Hero products with database-driven pricing
-          </p>
         </div>
         <div className="flex space-x-2">
-          <Button variant="outline" onClick={loadProducts}>
+          <Button variant="outline" onClick={loadData}>
             <RefreshCw className="w-4 h-4 mr-2" />
             Refresh
           </Button>
@@ -691,20 +749,51 @@ function PricingForm({ product, systemSettings, onSave, onCancel }) {
         }
       }
     })
-    
     return initialData
   })
 
-  // NEW: State for real-time pricing calculation
+  // State for real-time pricing calculation
   const [pricingPreviews, setPricingPreviews] = useState({})
+
+  // Initialize pricing previews on component mount
+  useEffect(() => {
+    if (systemSettings && Object.keys(pricingData.pricing).length > 0) {
+      initializePricingPreviews()
+    }
+  }, [systemSettings])
+
+  const initializePricingPreviews = async () => {
+    const availableTerms = product.terms_available || [1, 2, 3, 4, 5]
+    const previews = {}
+    
+    for (const term of availableTerms) {
+      const retailPrice = pricingData.pricing[term]?.retail || 0
+      const wholesalePrice = pricingData.pricing[term]?.wholesale || 0
+      
+      const [retailPreview, wholesalePreview] = await Promise.all([
+        calculatePreview(term, 'retail', retailPrice),
+        calculatePreview(term, 'wholesale', wholesalePrice)
+      ])
+      
+      previews[`${term}_retail`] = retailPreview
+      previews[`${term}_wholesale`] = wholesalePreview
+    }
+    
+    setPricingPreviews(previews)
+  }
 
   function getDefaultMultiplier(term) {
     const multipliers = { 1: 1.0, 2: 1.8, 3: 2.5, 4: 3.2, 5: 3.8 }
     return multipliers[term] || 1.0
   }
 
-  // NEW: Function to calculate preview using system settings
+  // Function to calculate preview using system settings
   const calculatePreview = async (term, customerType, price) => {
+    if (!systemSettings) {
+      console.log('No system settings available for preview calculation')
+      return null
+    }
+
     try {
       const response = await apiCall('/api/admin/pricing/calculate', {
         method: 'POST',
@@ -723,10 +812,10 @@ function PricingForm({ product, systemSettings, onSave, onCancel }) {
       console.error('Failed to calculate preview:', error)
     }
 
-    // Fallback calculation
+    // Fallback calculation with null checks
     const basePrice = parseFloat(price) || 0
     const adminFee = systemSettings?.fees?.admin_fee ?? 25
-    const taxRate = systemSettings?.taxes?.default_tax_rate || 0.08
+    const taxRate = systemSettings?.taxes?.default_tax_rate ?? 0.08
     const discountRate = systemSettings?.discounts?.wholesale_discount_rate ?? 0.15
     
     let finalPrice = basePrice
@@ -755,7 +844,7 @@ function PricingForm({ product, systemSettings, onSave, onCancel }) {
     }
   }
 
-  // NEW: Update pricing preview when values change  
+  // Update pricing preview when values change  
   const updatePricing = async (term, customerType, value) => {
     const numValue = parseFloat(value) || 0
     setPricingData(prev => ({
@@ -771,10 +860,12 @@ function PricingForm({ product, systemSettings, onSave, onCancel }) {
 
     // Calculate preview
     const preview = await calculatePreview(term, customerType, numValue)
-    setPricingPreviews(prev => ({
-      ...prev,
-      [`${term}_${customerType}`]: preview
-    }))
+    if (preview) {
+      setPricingPreviews(prev => ({
+        ...prev,
+        [`${term}_${customerType}`]: preview
+      }))
+    }
   }
 
   const updateBasePrice = async (value) => {
@@ -784,36 +875,49 @@ function PricingForm({ product, systemSettings, onSave, onCancel }) {
       base_price: numValue
     }))
     
+    if (!systemSettings) {
+      console.log('No system settings available for base price update')
+      return
+    }
+    
     const availableTerms = product.terms_available || [1, 2, 3, 4, 5]
     const wholesaleRate = systemSettings?.discounts?.wholesale_discount_rate ?? 0.15
     
     // Update all term pricing and previews
+    const newPricing = {}
+    const newPreviews = {}
+    
     for (const term of availableTerms) {
       const multiplier = getDefaultMultiplier(term)
       const retailPrice = Math.round(numValue * multiplier)
       const wholesalePrice = Math.round(retailPrice * (1 - wholesaleRate))
       
-      setPricingData(prev => ({
-        ...prev,
-        pricing: {
-          ...prev.pricing,
-          [term]: {
-            retail: retailPrice,
-            wholesale: wholesalePrice
-          }
-        }
-      }))
+      newPricing[term] = {
+        retail: retailPrice,
+        wholesale: wholesalePrice
+      }
 
       // Calculate previews for both customer types
-      const retailPreview = await calculatePreview(term, 'retail', retailPrice)
-      const wholesalePreview = await calculatePreview(term, 'wholesale', wholesalePrice)
+      const [retailPreview, wholesalePreview] = await Promise.all([
+        calculatePreview(term, 'retail', retailPrice),
+        calculatePreview(term, 'wholesale', wholesalePrice)
+      ])
       
-      setPricingPreviews(prev => ({
-        ...prev,
-        [`${term}_retail`]: retailPreview,
-        [`${term}_wholesale`]: wholesalePreview
-      }))
+      if (retailPreview) newPreviews[`${term}_retail`] = retailPreview
+      if (wholesalePreview) newPreviews[`${term}_wholesale`] = wholesalePreview
     }
+    
+    // Update pricing data
+    setPricingData(prev => ({
+      ...prev,
+      pricing: newPricing
+    }))
+    
+    // Update previews
+    setPricingPreviews(prev => ({
+      ...prev,
+      ...newPreviews
+    }))
   }
 
   const handleSubmit = (e) => {
@@ -842,7 +946,7 @@ function PricingForm({ product, systemSettings, onSave, onCancel }) {
   return (
     <div className="space-y-6">
       <form onSubmit={handleSubmit} className="space-y-6">
-        {/* System Settings Display - NEW */}
+        {/* System Settings Display */}
         <div className="border rounded-lg p-4 bg-blue-50 dark:bg-blue-900/20">
           <h3 className="text-lg font-semibold mb-3 flex items-center">
             <Database className="w-5 h-5 mr-2" />
@@ -851,18 +955,18 @@ function PricingForm({ product, systemSettings, onSave, onCancel }) {
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 text-sm">
             <div>
               <div className="font-medium text-gray-700">Admin Fee</div>
-              <div className="font-mono">${typeof systemSettings.fees?.admin_fee === 'number' ? systemSettings.fees.admin_fee : 25}</div>
+              <div className="font-mono">${systemSettings?.fees?.admin_fee ?? 25}</div>
             </div>
             <div>
               <div className="font-medium text-gray-700">Wholesale Discount</div>
               <div className="font-mono flex items-center">
                 <Percent className="w-3 h-3 mr-1" />
-                {((systemSettings?.discounts?.wholesale_discount_rate || 0.15) * 100).toFixed(1)}%
+                {((systemSettings?.discounts?.wholesale_discount_rate ?? 0.15) * 100).toFixed(1)}%
               </div>
             </div>
             <div>
               <div className="font-medium text-gray-700">Tax Rate</div>
-              <div className="font-mono">{((systemSettings?.taxes?.default_tax_rate || 0.08) * 100).toFixed(1)}%</div>
+              <div className="font-mono">{((systemSettings?.taxes?.default_tax_rate ?? 0.08) * 100).toFixed(1)}%</div>
             </div>
             <div>
               <div className="font-medium text-gray-700">Source</div>
@@ -874,6 +978,10 @@ function PricingForm({ product, systemSettings, onSave, onCancel }) {
                 )}
               </div>
             </div>
+          </div>
+          {/* Timestamp display for debugging */}
+          <div className="mt-2 text-xs text-gray-500">
+            Last Updated: {systemSettings?.timestamp ? new Date(systemSettings.timestamp).toLocaleString() : 'N/A'}
           </div>
         </div>
 
@@ -904,16 +1012,16 @@ function PricingForm({ product, systemSettings, onSave, onCancel }) {
                 <AlertCircle className="h-4 w-4" />
                 <AlertTitle>Database-Driven Calculations</AlertTitle>
                 <AlertDescription className="text-sm">
-                  Pricing uses current admin fees (${typeof systemSettings.fees?.admin_fee === 'number' ? systemSettings.fees.admin_fee : 25}), 
-                  wholesale discount ({((systemSettings?.discounts?.wholesale_discount_rate || 0.15) * 100).toFixed(1)}%), 
-                  and tax rate ({((systemSettings?.taxes?.default_tax_rate || 0.08) * 100).toFixed(1)}%) from your database settings.
+                  Pricing uses current admin fees (${systemSettings?.fees?.admin_fee ?? 25}), 
+                  wholesale discount ({((systemSettings?.discounts?.wholesale_discount_rate ?? 0.15) * 100).toFixed(1)}%), 
+                  and tax rate ({((systemSettings?.taxes?.default_tax_rate ?? 0.08) * 100).toFixed(1)}%) from your {systemSettings?.database_driven ? 'database' : 'fallback'} settings.
                 </AlertDescription>
               </Alert>
             </div>
           </div>
         </div>
 
-        {/* Term-based Pricing Section - UPDATED */}
+        {/* Term-based Pricing Section */}
         <div className="space-y-4">
           <h3 className="text-lg font-semibold">Term-based Pricing</h3>
           <div className="space-y-6">
@@ -953,10 +1061,10 @@ function PricingForm({ product, systemSettings, onSave, onCancel }) {
                             </div>
                             <div className="flex justify-between">
                               <span>Admin Fee:</span>
-                              <span className="font-mono">${typeof systemSettings.fees?.admin_fee === 'number' ? systemSettings.fees.admin_fee : 25}</span>
+                              <span className="font-mono">${systemSettings?.fees?.admin_fee ?? 25}</span>
                             </div>
                             <div className="flex justify-between">
-                              <span>Tax ({((systemSettings?.taxes?.default_tax_rate || 0.08) * 100).toFixed(1)}%):</span>
+                              <span>Tax ({((systemSettings?.taxes?.default_tax_rate ?? 0.08) * 100).toFixed(1)}%):</span>
                               <span className="font-mono">${retailPreview.tax_amount}</span>
                             </div>
                             <hr className="my-1" />
@@ -975,11 +1083,11 @@ function PricingForm({ product, systemSettings, onSave, onCancel }) {
                       </div>
                     </div>
 
-                    {/* Wholesale Pricing - UPDATED */}
+                    {/* Wholesale Pricing */}
                     <div className="space-y-3">
                       <div>
                         <Label className="text-sm font-medium">
-                          Wholesale Price ({((systemSettings?.discounts?.wholesale_discount_rate || 0.15) * 100).toFixed(1)}% discount)
+                          Wholesale Price ({((systemSettings?.discounts?.wholesale_discount_rate ?? 0.15) * 100).toFixed(1)}% discount)
                         </Label>
                         <div className="relative mt-1">
                           <DollarSign className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
@@ -1013,7 +1121,7 @@ function PricingForm({ product, systemSettings, onSave, onCancel }) {
                             </div>
                             <div className="flex justify-between">
                               <span>Admin Fee:</span>
-                              <span className="font-mono">${typeof systemSettings.fees?.admin_fee === 'number' ? systemSettings.fees.admin_fee : 25}</span>
+                              <span className="font-mono">${systemSettings?.fees?.admin_fee ?? 25}</span>
                             </div>
                             <div className="flex justify-between">
                               <span>Tax:</span>
@@ -1043,7 +1151,7 @@ function PricingForm({ product, systemSettings, onSave, onCancel }) {
           </div>
         </div>
 
-        {/* Pricing Summary - UPDATED */}
+        {/* Pricing Summary */}
         <div className="border rounded-lg p-4 bg-green-50 dark:bg-green-900/20">
           <h3 className="text-lg font-semibold mb-3">Pricing Summary</h3>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 text-sm">
@@ -1064,7 +1172,7 @@ function PricingForm({ product, systemSettings, onSave, onCancel }) {
             </div>
             <div>
               <div className="font-medium text-gray-700 dark:text-gray-300">Additional Fees</div>
-              <div>${typeof systemSettings.fees?.admin_fee === 'number' ? systemSettings.fees.admin_fee : 25} admin + {((systemSettings?.taxes?.default_tax_rate || 0.08) * 100).toFixed(1)}% tax</div>
+              <div>${systemSettings?.fees?.admin_fee ?? 25} admin + {((systemSettings?.taxes?.default_tax_rate ?? 0.08) * 100).toFixed(1)}% tax</div>
             </div>
           </div>
         </div>
