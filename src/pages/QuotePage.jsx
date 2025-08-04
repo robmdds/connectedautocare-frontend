@@ -32,6 +32,8 @@ const QuotePage = () => {
   const [vinInfo, setVinInfo] = useState(null)
   const [eligibilityCheck, setEligibilityCheck] = useState(null)
 
+  const [heroProducts, setHeroProducts] = useState([])
+  const [heroProductsLoading, setHeroProductsLoading] = useState(true)
   // Payment states
   const [showPayment, setShowPayment] = useState(false)
   const [paymentLoading, setPaymentLoading] = useState(false)
@@ -74,6 +76,56 @@ const QuotePage = () => {
     auto_populated: false
   })
 
+  // Add useEffect to fetch products on component mount
+  useEffect(() => {
+    const fetchHeroProducts = async () => {
+      try {
+        setHeroProductsLoading(true)
+        const response = await fetch(`${API_BASE_URL}/api/hero/products`)
+        const result = await response.json()
+        
+        if (result.success && result.data) {
+          // Map backend product types to UI-friendly format
+          const productMap = {
+            'home_protection': { label: 'Home Protection Plan', icon: Home },
+            'comprehensive_auto_protection': { label: 'Comprehensive Auto Protection', icon: Car },
+            'home_deductible_reimbursement': { label: 'Home Deductible Reimbursement', icon: Shield },
+            'auto_advantage_deductible_reimbursement': { label: 'Auto Advantage DDR', icon: Car },
+            'all_vehicle_deductible_reimbursement': { label: 'All Vehicle DDR', icon: Car },
+            'auto_rv_deductible_reimbursement': { label: 'Auto & RV DDR', icon: Car },
+            'multi_vehicle_deductible_reimbursement': { label: 'Multi Vehicle DDR', icon: Car },
+            'hero_level_protection_home': { label: 'Hero Level Protection Home', icon: Shield }
+          }
+          
+          const mappedProducts = result.data.map(productType => ({
+            value: productType,
+            label: productMap[productType]?.label || productType.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()),
+            icon: productMap[productType]?.icon || Shield
+          }))
+          
+          setHeroProducts(mappedProducts)
+        }
+      } catch (err) {
+        console.error('Failed to fetch hero products:', err)
+        // Fallback to hard-coded list with corrected values
+        setHeroProducts([
+          { value: 'home_protection', label: 'Home Protection Plan', icon: Home },
+          { value: 'comprehensive_auto_protection', label: 'Comprehensive Auto Protection', icon: Car },
+          { value: 'home_deductible_reimbursement', label: 'Home Deductible Reimbursement', icon: Shield },
+          { value: 'auto_advantage_deductible_reimbursement', label: 'Auto Advantage DDR', icon: Car },
+          { value: 'all_vehicle_deductible_reimbursement', label: 'All Vehicle DDR', icon: Car },
+          { value: 'auto_rv_deductible_reimbursement', label: 'Auto & RV DDR', icon: Car },
+          { value: 'multi_vehicle_deductible_reimbursement', label: 'Multi Vehicle DDR', icon: Car },
+          { value: 'hero_level_protection_home', label: 'Hero Level Protection Home', icon: Shield }
+        ])
+      } finally {
+        setHeroProductsLoading(false)
+      }
+    }
+
+    fetchHeroProducts()
+  }, [])
+
   // Handle URL parameters on component mount
   useEffect(() => {
     const coverage = searchParams.get('coverage')
@@ -97,15 +149,6 @@ const QuotePage = () => {
     }
   }, [searchParams])
 
-  const heroProducts = [
-    { value: 'home_protection', label: 'Home Protection Plan', icon: Home },
-    { value: 'auto_protection', label: 'Auto Protection Plan', icon: Car },
-    { value: 'home_deductible', label: 'Home Deductible Reimbursement', icon: Shield },
-    { value: 'auto_advantage', label: 'Auto Advantage DDR', icon: Car },
-    { value: 'all_vehicle', label: 'All Vehicle DDR', icon: Car },
-    { value: 'auto_rv', label: 'Auto & RV DDR', icon: Car },
-    { value: 'multi_vehicle', label: 'Multi Vehicle DDR', icon: Car }
-  ]
 
   const vehicleMakes = [
     'Honda', 'Toyota', 'Nissan', 'Hyundai', 'Kia', 'Lexus', 'Mazda', 'Mitsubishi', 'Subaru',
@@ -271,6 +314,8 @@ const QuotePage = () => {
       setEligibilityCheck(null)
     }
   }, [vscForm.mileage, vinInfo])
+
+
 
   const handleHeroSubmit = async (e) => {
     e.preventDefault()
@@ -1303,14 +1348,18 @@ const QuotePage = () => {
                               <SelectValue placeholder="Select a product" />
                             </SelectTrigger>
                             <SelectContent>
-                              {heroProducts.map((product) => (
-                                <SelectItem key={product.value} value={product.value}>
-                                  <div className="flex items-center space-x-2">
-                                    <product.icon className="h-4 w-4" />
-                                    <span>{product.label}</span>
-                                  </div>
-                                </SelectItem>
-                              ))}
+                              {heroProductsLoading ? (
+                                <SelectItem value="" disabled>Loading products...</SelectItem>
+                              ) : (
+                                heroProducts.map((product) => (
+                                  <SelectItem key={product.value} value={product.value}>
+                                    <div className="flex items-center space-x-2">
+                                      <product.icon className="h-4 w-4" />
+                                      <span>{product.label}</span>
+                                    </div>
+                                  </SelectItem>
+                                ))
+                              )}
                             </SelectContent>
                           </Select>
                         </div>
