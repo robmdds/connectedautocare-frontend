@@ -1349,7 +1349,7 @@ const QuotePage = () => {
                             </SelectTrigger>
                             <SelectContent>
                               {heroProductsLoading ? (
-                                <SelectItem value="" disabled>Loading products...</SelectItem>
+                                <SelectItem value="loading" disabled>Loading products...</SelectItem>
                               ) : (
                                 heroProducts.map((product) => (
                                   <SelectItem key={product.value} value={product.value}>
