@@ -725,9 +725,9 @@ function PricingForm({ product, systemSettings, onSave, onCancel }) {
 
     // Fallback calculation
     const basePrice = parseFloat(price) || 0
-    const adminFee = systemSettings?.fees?.admin_fee || 25
+    const adminFee = systemSettings?.fees?.admin_fee ?? 25
     const taxRate = systemSettings?.taxes?.default_tax_rate || 0.08
-    const discountRate = systemSettings?.discounts?.wholesale_discount_rate || 0.15
+    const discountRate = systemSettings?.discounts?.wholesale_discount_rate ?? 0.15
     
     let finalPrice = basePrice
     let discountAmount = 0
@@ -785,7 +785,7 @@ function PricingForm({ product, systemSettings, onSave, onCancel }) {
     }))
     
     const availableTerms = product.terms_available || [1, 2, 3, 4, 5]
-    const wholesaleRate = systemSettings?.discounts?.wholesale_discount_rate || 0.15
+    const wholesaleRate = systemSettings?.discounts?.wholesale_discount_rate ?? 0.15
     
     // Update all term pricing and previews
     for (const term of availableTerms) {
@@ -979,7 +979,7 @@ function PricingForm({ product, systemSettings, onSave, onCancel }) {
                     <div className="space-y-3">
                       <div>
                         <Label className="text-sm font-medium">
-                          Wholesale Price ({((systemSettings?.discounts?.wholesale_discount_rate || 0.15) * 100).toFixed(1)}% discount)
+                          Wholesale Price ({((systemSettings?.discounts?.wholesale_discount_rate ?? 0.15) * 100).toFixed(1)}% discount)
                         </Label>
                         <div className="relative mt-1">
                           <DollarSign className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
@@ -1060,7 +1060,7 @@ function PricingForm({ product, systemSettings, onSave, onCancel }) {
             </div>
             <div>
               <div className="font-medium text-gray-700 dark:text-gray-300">Wholesale Discount</div>
-              <div>{((systemSettings?.discounts?.wholesale_discount_rate || 0.15) * 100).toFixed(1)}% off retail</div>
+              <div>{((systemSettings?.discounts?.wholesale_discount_rate ?? 0.15) * 100).toFixed(1)}% off retail</div>
             </div>
             <div>
               <div className="font-medium text-gray-700 dark:text-gray-300">Additional Fees</div>
