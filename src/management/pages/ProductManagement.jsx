@@ -851,13 +851,13 @@ function PricingForm({ product, systemSettings, onSave, onCancel }) {
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 text-sm">
             <div>
               <div className="font-medium text-gray-700">Admin Fee</div>
-              <div className="font-mono">${systemSettings?.fees?.admin_fee ?? 25}</div>
+              <div className="font-mono">${typeof systemSettings.fees?.admin_fee === 'number' ? systemSettings.fees.admin_fee : 25}</div>
             </div>
             <div>
               <div className="font-medium text-gray-700">Wholesale Discount</div>
               <div className="font-mono flex items-center">
                 <Percent className="w-3 h-3 mr-1" />
-                {((systemSettings?.discounts?.wholesale_discount_rate ?? 0.15) * 100).toFixed(1)}%
+                {((systemSettings?.discounts?.wholesale_discount_rate || 0.15) * 100).toFixed(1)}%
               </div>
             </div>
             <div>
@@ -904,8 +904,8 @@ function PricingForm({ product, systemSettings, onSave, onCancel }) {
                 <AlertCircle className="h-4 w-4" />
                 <AlertTitle>Database-Driven Calculations</AlertTitle>
                 <AlertDescription className="text-sm">
-                  Pricing uses current admin fees ({systemSettings?.fees?.admin_fee ?? 25}), 
-                  wholesale discount ({((systemSettings?.discounts?.wholesale_discount_rate ?? 0.15) * 100).toFixed(1)}%), 
+                  Pricing uses current admin fees (${typeof systemSettings.fees?.admin_fee === 'number' ? systemSettings.fees.admin_fee : 25}), 
+                  wholesale discount ({((systemSettings?.discounts?.wholesale_discount_rate || 0.15) * 100).toFixed(1)}%), 
                   and tax rate ({((systemSettings?.taxes?.default_tax_rate || 0.08) * 100).toFixed(1)}%) from your database settings.
                 </AlertDescription>
               </Alert>
@@ -953,7 +953,7 @@ function PricingForm({ product, systemSettings, onSave, onCancel }) {
                             </div>
                             <div className="flex justify-between">
                               <span>Admin Fee:</span>
-                              <span className="font-mono">${systemSettings?.fees?.admin_fee}</span>
+                              <span className="font-mono">${typeof systemSettings.fees?.admin_fee === 'number' ? systemSettings.fees.admin_fee : 25}</span>
                             </div>
                             <div className="flex justify-between">
                               <span>Tax ({((systemSettings?.taxes?.default_tax_rate || 0.08) * 100).toFixed(1)}%):</span>
@@ -979,7 +979,7 @@ function PricingForm({ product, systemSettings, onSave, onCancel }) {
                     <div className="space-y-3">
                       <div>
                         <Label className="text-sm font-medium">
-                          Wholesale Price ({((systemSettings?.discounts?.wholesale_discount_rate ?? 0.15) * 100).toFixed(1)}% discount)
+                          Wholesale Price ({((systemSettings?.discounts?.wholesale_discount_rate || 0.15) * 100).toFixed(1)}% discount)
                         </Label>
                         <div className="relative mt-1">
                           <DollarSign className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
@@ -1013,7 +1013,7 @@ function PricingForm({ product, systemSettings, onSave, onCancel }) {
                             </div>
                             <div className="flex justify-between">
                               <span>Admin Fee:</span>
-                              <span className="font-mono">${systemSettings?.fees?.admin_fee}</span>
+                              <span className="font-mono">${typeof systemSettings.fees?.admin_fee === 'number' ? systemSettings.fees.admin_fee : 25}</span>
                             </div>
                             <div className="flex justify-between">
                               <span>Tax:</span>
@@ -1064,7 +1064,7 @@ function PricingForm({ product, systemSettings, onSave, onCancel }) {
             </div>
             <div>
               <div className="font-medium text-gray-700 dark:text-gray-300">Additional Fees</div>
-              <div>${systemSettings?.fees?.admin_fee || 25} admin + {((systemSettings?.taxes?.default_tax_rate || 0.08) * 100).toFixed(1)}% tax</div>
+              <div>${typeof systemSettings.fees?.admin_fee === 'number' ? systemSettings.fees.admin_fee : 25} admin + {((systemSettings?.taxes?.default_tax_rate || 0.08) * 100).toFixed(1)}% tax</div>
             </div>
           </div>
         </div>
