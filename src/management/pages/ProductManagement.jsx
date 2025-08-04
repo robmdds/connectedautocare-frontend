@@ -1,17 +1,8 @@
 import React, { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import {
-  Plus,
-  Edit,
-  Trash2,
-  Save,
-  X,
-  Package,
-  DollarSign,
-  AlertCircle,
-  CheckCircle,
-  RefreshCw,
-  Calculator
+  Plus, Edit, Trash2, Save, X, Package, DollarSign, AlertCircle,
+  CheckCircle, RefreshCw, Calculator, Database, Percent
 } from 'lucide-react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card'
 import { Button } from '../components/ui/button'
@@ -20,30 +11,14 @@ import { Label } from '../components/ui/label'
 import { Textarea } from '../components/ui/textarea'
 import { Badge } from '../components/ui/badge'
 import { Switch } from '../components/ui/switch'
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from '../components/ui/dialog'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '../components/ui/select'
-import {
-  Alert,
-  AlertDescription,
-  AlertTitle,
-} from '../components/ui/alert'
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '../components/ui/dialog'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select'
+import { Alert, AlertDescription, AlertTitle } from '../components/ui/alert'
 import { apiCall } from '../lib/auth'
 
 export default function EnhancedProductManagement() {
   const [heroProducts, setHeroProducts] = useState({})
+  const [systemSettings, setSystemSettings] = useState(null)
   const [loading, setLoading] = useState(true)
   const [editingProduct, setEditingProduct] = useState(null)
   const [showCreateDialog, setShowCreateDialog] = useState(false)
@@ -55,7 +30,33 @@ export default function EnhancedProductManagement() {
 
   useEffect(() => {
     loadProducts()
+    loadSystemSettings() // NEW: Load system settings
   }, [])
+
+  // NEW: Load system settings
+  const loadSystemSettings = async () => {
+    try {
+      const [response, stausCode] = await apiCall('/api/admin/system-settings')
+      if (response.success) {
+        setSystemSettings({
+        fees: response.data.settings.fees,
+        discounts: response.data.settings.discounts,
+        taxes: response.data.settings.taxes,
+        hero_settings: response.data.settings.hero_settings,
+        database_driven: response.data.database_driven,
+        timestamp: response.data.timestamp
+      })
+      }
+    } catch (error) {
+      console.error('Failed to load system settings:', error)
+      // Set fallback settings
+      setSystemSettings({
+        fees: { admin_fee: 25.00, processing_fee: 15.00 },
+        discounts: { wholesale_discount_rate: 0.15 },
+        taxes: { default_tax_rate: 0.08 }
+      })
+    }
+  }
 
   const showNotification = (message, type = 'success') => {
     setNotification({ message, type })
@@ -94,8 +95,6 @@ export default function EnhancedProductManagement() {
             pricing: product.pricing || {},
             features: features,
             terms_available: product.terms_available || [1, 2, 3],
-            tax_rate: 0.08,
-            wholesale_discount: 0.15,
             base_price: product.base_price || 0,
             min_price: product.min_price || 0,
             max_price: product.max_price || 0,
@@ -106,6 +105,11 @@ export default function EnhancedProductManagement() {
         })
         
         setHeroProducts(heroProductsObj)
+        
+        // NEW: Update system settings from response if available
+        if (responseData.system_settings) {
+          setSystemSettings(responseData.system_settings)
+        }
       }
     } catch (error) {
       console.error('Failed to load products:', error)
@@ -280,13 +284,51 @@ export default function EnhancedProductManagement() {
         </Alert>
       )}
 
+      {/* NEW: System Settings Status */}
+      {systemSettings && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center">
+              <Database className="w-5 h-5 mr-2" />
+              Current System Settings
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+              <div>
+                <div className="font-medium text-gray-700">Admin Fee</div>
+                <div className="font-mono">${systemSettings.fees?.admin_fee ?? 25}</div>
+              </div>
+              <div>
+                <div className="font-medium text-gray-700">Wholesale Discount</div>
+                <div className="font-mono">{((systemSettings.discounts?.wholesale_discount_rate ?? 0.15) * 100).toFixed(1)}%</div>
+              </div>
+              <div>
+                <div className="font-medium text-gray-700">Tax Rate</div>
+                <div className="font-mono">{((systemSettings.taxes?.default_tax_rate || 0.08) * 100).toFixed(1)}%</div>
+              </div>
+              <div>
+                <div className="font-medium text-gray-700">Source</div>
+                <div className="flex items-center">
+                  {systemSettings.database_driven ? (
+                    <><CheckCircle className="w-4 h-4 text-green-500 mr-1" />Database</>
+                  ) : (
+                    <><AlertCircle className="w-4 h-4 text-orange-500 mr-1" />Fallback</>
+                  )}
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
             Product Management
           </h1>
           <p className="text-gray-600 dark:text-gray-400 mt-1">
-            Manage your Hero products, pricing, and coverage options
+            Manage your Hero products with database-driven pricing
           </p>
         </div>
         <div className="flex space-x-2">
@@ -505,12 +547,13 @@ export default function EnhancedProductManagement() {
             <DialogHeader className="flex-shrink-0">
               <DialogTitle>Manage Pricing - {selectedProduct.name}</DialogTitle>
               <DialogDescription>
-                Update pricing for different terms and customer types
+                Update pricing with database-driven fees and discounts
               </DialogDescription>
             </DialogHeader>
             <div className="flex-1 overflow-y-auto pr-2">
               <PricingForm
                 product={selectedProduct}
+                systemSettings={systemSettings}
                 onSave={updateProductPricing}
                 onCancel={() => {
                   setShowPricingDialog(false)
@@ -659,7 +702,8 @@ function ProductForm({ product, onSave, onCancel }) {
   )
 }
 
-function PricingForm({ product, onSave, onCancel }) {
+// UPDATED: PricingForm with database-driven calculations
+function PricingForm({ product, systemSettings, onSave, onCancel }) {
   const [pricingData, setPricingData] = useState(() => {
     const initialData = {
       base_price: product.base_price || 0,
@@ -685,12 +729,68 @@ function PricingForm({ product, onSave, onCancel }) {
     return initialData
   })
 
+  // NEW: State for real-time pricing calculation
+  const [pricingPreviews, setPricingPreviews] = useState({})
+
   function getDefaultMultiplier(term) {
     const multipliers = { 1: 1.0, 2: 1.8, 3: 2.5, 4: 3.2, 5: 3.8 }
     return multipliers[term] || 1.0
   }
 
-  const updatePricing = (term, customerType, value) => {
+  // NEW: Function to calculate preview using system settings
+  const calculatePreview = async (term, customerType, price) => {
+    try {
+      const response = await apiCall('/api/admin/pricing/calculate', {
+        method: 'POST',
+        body: JSON.stringify({
+          base_price: parseFloat(price) || 0,
+          term_years: term,
+          customer_type: customerType,
+          state: 'FL' // Default state, could be made configurable
+        })
+      })
+
+      if (response.success) {
+        return response.data.calculation
+      }
+    } catch (error) {
+      console.error('Failed to calculate preview:', error)
+    }
+
+    // Fallback calculation
+    const basePrice = parseFloat(price) || 0
+    const adminFee = systemSettings?.fees?.admin_fee || 25
+    const taxRate = systemSettings?.taxes?.default_tax_rate || 0.08
+    const discountRate = systemSettings?.discounts?.wholesale_discount_rate || 0.15
+    
+    let finalPrice = basePrice
+    let discountAmount = 0
+    
+    if (customerType === 'wholesale') {
+      discountAmount = basePrice * discountRate
+      finalPrice = basePrice - discountAmount
+    }
+    
+    const subtotal = finalPrice + adminFee
+    const tax = subtotal * taxRate
+    const total = subtotal + tax
+    const monthly = total / (term * 12)
+    
+    return {
+      base_price: basePrice.toFixed(2),
+      discount_amount: discountAmount.toFixed(2),
+      discounted_price: finalPrice.toFixed(2),
+      admin_fee: adminFee.toFixed(2),
+      subtotal: subtotal.toFixed(2),
+      tax_amount: tax.toFixed(2),
+      total_price: total.toFixed(2),
+      monthly_payment: monthly.toFixed(2),
+      discount_rate: customerType === 'wholesale' ? discountRate : 0
+    }
+  }
+
+  // NEW: Update pricing preview when values change  
+  const updatePricing = async (term, customerType, value) => {
     const numValue = parseFloat(value) || 0
     setPricingData(prev => ({
       ...prev,
@@ -702,9 +802,16 @@ function PricingForm({ product, onSave, onCancel }) {
         }
       }
     }))
+
+    // Calculate preview
+    const preview = await calculatePreview(term, customerType, numValue)
+    setPricingPreviews(prev => ({
+      ...prev,
+      [`${term}_${customerType}`]: preview
+    }))
   }
 
-  const updateBasePrice = (value) => {
+  const updateBasePrice = async (value) => {
     const numValue = parseFloat(value) || 0
     setPricingData(prev => ({
       ...prev,
@@ -712,10 +819,13 @@ function PricingForm({ product, onSave, onCancel }) {
     }))
     
     const availableTerms = product.terms_available || [1, 2, 3, 4, 5]
-    availableTerms.forEach(term => {
+    const wholesaleRate = systemSettings?.discounts?.wholesale_discount_rate || 0.15
+    
+    // Update all term pricing and previews
+    for (const term of availableTerms) {
       const multiplier = getDefaultMultiplier(term)
       const retailPrice = Math.round(numValue * multiplier)
-      const wholesalePrice = Math.round(retailPrice * 0.85)
+      const wholesalePrice = Math.round(retailPrice * (1 - wholesaleRate))
       
       setPricingData(prev => ({
         ...prev,
@@ -727,24 +837,16 @@ function PricingForm({ product, onSave, onCancel }) {
           }
         }
       }))
-    })
-  }
 
-  const calculatePreview = (term, customerType, price) => {
-    const basePrice = parseFloat(price) || 0
-    const adminFee = 25
-    const taxRate = 0.08
-    
-    const subtotal = basePrice + adminFee
-    const tax = subtotal * taxRate
-    const total = subtotal + tax
-    const monthly = total / (term * 12)
-    
-    return {
-      subtotal: subtotal.toFixed(2),
-      tax: tax.toFixed(2),
-      total: total.toFixed(2),
-      monthly: monthly.toFixed(2)
+      // Calculate previews for both customer types
+      const retailPreview = await calculatePreview(term, 'retail', retailPrice)
+      const wholesalePreview = await calculatePreview(term, 'wholesale', wholesalePrice)
+      
+      setPricingPreviews(prev => ({
+        ...prev,
+        [`${term}_retail`]: retailPreview,
+        [`${term}_wholesale`]: wholesalePreview
+      }))
     }
   }
 
@@ -774,8 +876,43 @@ function PricingForm({ product, onSave, onCancel }) {
   return (
     <div className="space-y-6">
       <form onSubmit={handleSubmit} className="space-y-6">
-        {/* Base Pricing Section - Sticky */}
-        <div className="border rounded-lg p-4 bg-blue-50 dark:bg-blue-900/20 sticky top-0 z-10">
+        {/* System Settings Display - NEW */}
+        <div className="border rounded-lg p-4 bg-blue-50 dark:bg-blue-900/20">
+          <h3 className="text-lg font-semibold mb-3 flex items-center">
+            <Database className="w-5 h-5 mr-2" />
+            Current System Settings
+          </h3>
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 text-sm">
+            <div>
+              <div className="font-medium text-gray-700">Admin Fee</div>
+              <div className="font-mono">${systemSettings?.fees?.admin_fee ?? 25}</div>
+            </div>
+            <div>
+              <div className="font-medium text-gray-700">Wholesale Discount</div>
+              <div className="font-mono flex items-center">
+                <Percent className="w-3 h-3 mr-1" />
+                {((systemSettings?.discounts?.wholesale_discount_rate ?? 0.15) * 100).toFixed(1)}%
+              </div>
+            </div>
+            <div>
+              <div className="font-medium text-gray-700">Tax Rate</div>
+              <div className="font-mono">{((systemSettings?.taxes?.default_tax_rate || 0.08) * 100).toFixed(1)}%</div>
+            </div>
+            <div>
+              <div className="font-medium text-gray-700">Source</div>
+              <div className="flex items-center">
+                {systemSettings?.database_driven ? (
+                  <><CheckCircle className="w-4 h-4 text-green-500 mr-1" />Database</>
+                ) : (
+                  <><AlertCircle className="w-4 h-4 text-orange-500 mr-1" />Fallback</>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Base Pricing Section */}
+        <div className="border rounded-lg p-4 bg-green-50 dark:bg-green-900/20 sticky top-0 z-10">
           <h3 className="text-lg font-semibold mb-3">Base Pricing</h3>
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             <div>
@@ -793,137 +930,154 @@ function PricingForm({ product, onSave, onCancel }) {
                 />
               </div>
               <p className="text-sm text-gray-500 mt-1">
-                This will auto-calculate pricing for all terms
+                This will auto-calculate pricing for all terms using database settings
               </p>
             </div>
             <div className="flex items-center">
               <Alert className="w-full">
                 <AlertCircle className="h-4 w-4" />
-                <AlertTitle>Auto-Calculate</AlertTitle>
+                <AlertTitle>Database-Driven Calculations</AlertTitle>
                 <AlertDescription className="text-sm">
-                  Changing the base price will update all term pricing using standard multipliers.
+                  Pricing uses current admin fees ({systemSettings?.fees?.admin_fee ?? 25}), 
+                  wholesale discount ({((systemSettings?.discounts?.wholesale_discount_rate ?? 0.15) * 100).toFixed(1)}%), 
+                  and tax rate ({((systemSettings?.taxes?.default_tax_rate || 0.08) * 100).toFixed(1)}%) from your database settings.
                 </AlertDescription>
               </Alert>
             </div>
           </div>
         </div>
 
-        {/* Term-based Pricing Section */}
+        {/* Term-based Pricing Section - UPDATED */}
         <div className="space-y-4">
           <h3 className="text-lg font-semibold">Term-based Pricing</h3>
           <div className="space-y-6">
-            {availableTerms.map(term => (
-              <div key={term} className="border rounded-lg p-4 bg-white dark:bg-gray-800">
-                <h4 className="font-medium mb-4 text-lg border-b pb-2">
-                  {term} Year{term > 1 ? 's' : ''} Coverage
-                </h4>
-                <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-                  {/* Retail Pricing */}
-                  <div className="space-y-3">
-                    <div>
-                      <Label className="text-sm font-medium">Retail Price</Label>
-                      <div className="relative mt-1">
-                        <DollarSign className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
-                        <Input
-                          type="number"
-                          step="0.01"
-                          min="0"
-                          value={pricingData.pricing[term]?.retail || 0}
-                          onChange={(e) => updatePricing(term, 'retail', e.target.value)}
-                          className="pl-10"
-                        />
+            {availableTerms.map(term => {
+              const retailPreview = pricingPreviews[`${term}_retail`]
+              const wholesalePreview = pricingPreviews[`${term}_wholesale`]
+              
+              return (
+                <div key={term} className="border rounded-lg p-4 bg-white dark:bg-gray-800">
+                  <h4 className="font-medium mb-4 text-lg border-b pb-2">
+                    {term} Year{term > 1 ? 's' : ''} Coverage
+                  </h4>
+                  <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+                    {/* Retail Pricing */}
+                    <div className="space-y-3">
+                      <div>
+                        <Label className="text-sm font-medium">Retail Price</Label>
+                        <div className="relative mt-1">
+                          <DollarSign className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                          <Input
+                            type="number"
+                            step="0.01"
+                            min="0"
+                            value={pricingData.pricing[term]?.retail || 0}
+                            onChange={(e) => updatePricing(term, 'retail', e.target.value)}
+                            className="pl-10"
+                          />
+                        </div>
                       </div>
-                    </div>
-                    <div className="bg-gray-50 dark:bg-gray-700 p-3 rounded-md">
-                      <div className="font-medium mb-2 text-sm">Customer Pays:</div>
-                      {(() => {
-                        const preview = calculatePreview(term, 'retail', pricingData.pricing[term]?.retail)
-                        return (
+                      <div className="bg-gray-50 dark:bg-gray-700 p-3 rounded-md">
+                        <div className="font-medium mb-2 text-sm">Customer Pays:</div>
+                        {retailPreview ? (
                           <div className="space-y-1 text-sm">
                             <div className="flex justify-between">
                               <span>Base Price:</span>
-                              <span className="font-mono">${pricingData.pricing[term]?.retail || 0}</span>
+                              <span className="font-mono">${retailPreview.base_price}</span>
                             </div>
                             <div className="flex justify-between">
                               <span>Admin Fee:</span>
-                              <span className="font-mono">$25.00</span>
+                              <span className="font-mono">${retailPreview.admin_fee}</span>
                             </div>
                             <div className="flex justify-between">
-                              <span>Tax (8%):</span>
-                              <span className="font-mono">${preview.tax}</span>
+                              <span>Tax ({((systemSettings?.taxes?.default_tax_rate || 0.08) * 100).toFixed(1)}%):</span>
+                              <span className="font-mono">${retailPreview.tax_amount}</span>
                             </div>
                             <hr className="my-1" />
                             <div className="flex justify-between font-bold">
                               <span>Total:</span>
-                              <span className="font-mono">${preview.total}</span>
+                              <span className="font-mono">${retailPreview.total_price}</span>
                             </div>
                             <div className="flex justify-between text-blue-600 dark:text-blue-400">
                               <span>Monthly:</span>
-                              <span className="font-mono">${preview.monthly}</span>
+                              <span className="font-mono">${retailPreview.monthly_payment}</span>
                             </div>
                           </div>
-                        )
-                      })()}
-                    </div>
-                  </div>
-
-                  {/* Wholesale Pricing */}
-                  <div className="space-y-3">
-                    <div>
-                      <Label className="text-sm font-medium">Wholesale Price (15% discount)</Label>
-                      <div className="relative mt-1">
-                        <DollarSign className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
-                        <Input
-                          type="number"
-                          step="0.01"
-                          min="0"
-                          value={pricingData.pricing[term]?.wholesale || 0}
-                          onChange={(e) => updatePricing(term, 'wholesale', e.target.value)}
-                          className="pl-10"
-                        />
+                        ) : (
+                          <div className="text-sm text-gray-500">Calculating...</div>
+                        )}
                       </div>
                     </div>
-                    <div className="bg-orange-50 dark:bg-orange-900/30 p-3 rounded-md">
-                      <div className="font-medium mb-2 text-sm">Reseller Pays:</div>
-                      {(() => {
-                        const preview = calculatePreview(term, 'wholesale', pricingData.pricing[term]?.wholesale)
-                        const retailPreview = calculatePreview(term, 'retail', pricingData.pricing[term]?.retail)
-                        const savings = (parseFloat(retailPreview.total) - parseFloat(preview.total)).toFixed(2)
-                        return (
+
+                    {/* Wholesale Pricing - UPDATED */}
+                    <div className="space-y-3">
+                      <div>
+                        <Label className="text-sm font-medium">
+                          Wholesale Price ({((systemSettings?.discounts?.wholesale_discount_rate || 0.15) * 100).toFixed(1)}% discount)
+                        </Label>
+                        <div className="relative mt-1">
+                          <DollarSign className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                          <Input
+                            type="number"
+                            step="0.01"
+                            min="0"
+                            value={pricingData.pricing[term]?.wholesale || 0}
+                            onChange={(e) => updatePricing(term, 'wholesale', e.target.value)}
+                            className="pl-10"
+                          />
+                        </div>
+                      </div>
+                      <div className="bg-orange-50 dark:bg-orange-900/30 p-3 rounded-md">
+                        <div className="font-medium mb-2 text-sm">Reseller Pays:</div>
+                        {wholesalePreview ? (
                           <div className="space-y-1 text-sm">
                             <div className="flex justify-between">
                               <span>Base Price:</span>
-                              <span className="font-mono">${pricingData.pricing[term]?.wholesale || 0}</span>
+                              <span className="font-mono">${wholesalePreview.base_price}</span>
+                            </div>
+                            {parseFloat(wholesalePreview.discount_amount) > 0 && (
+                              <div className="flex justify-between text-green-600">
+                                <span>Discount ({((wholesalePreview.discount_rate || 0) * 100).toFixed(1)}%):</span>
+                                <span className="font-mono">-${wholesalePreview.discount_amount}</span>
+                              </div>
+                            )}
+                            <div className="flex justify-between">
+                              <span>Discounted Price:</span>
+                              <span className="font-mono">${wholesalePreview.discounted_price}</span>
                             </div>
                             <div className="flex justify-between">
                               <span>Admin Fee:</span>
-                              <span className="font-mono">$25.00</span>
+                              <span className="font-mono">${wholesalePreview.admin_fee}</span>
                             </div>
                             <div className="flex justify-between">
-                              <span>Tax (8%):</span>
-                              <span className="font-mono">${preview.tax}</span>
+                              <span>Tax:</span>
+                              <span className="font-mono">${wholesalePreview.tax_amount}</span>
                             </div>
                             <hr className="my-1" />
                             <div className="flex justify-between font-bold">
                               <span>Total:</span>
-                              <span className="font-mono">${preview.total}</span>
+                              <span className="font-mono">${wholesalePreview.total_price}</span>
                             </div>
                             <div className="flex justify-between text-orange-600 dark:text-orange-400">
-                              <span>Savings:</span>
-                              <span className="font-mono">${savings}</span>
+                              <span>vs Retail Savings:</span>
+                              <span className="font-mono">
+                                ${retailPreview ? (parseFloat(retailPreview.total_price) - parseFloat(wholesalePreview.total_price)).toFixed(2) : '0.00'}
+                              </span>
                             </div>
                           </div>
-                        )
-                      })()}
+                        ) : (
+                          <div className="text-sm text-gray-500">Calculating...</div>
+                        )}
+                        </div>
                     </div>
                   </div>
                 </div>
-              </div>
-            ))}
+              )
+            })}
           </div>
         </div>
 
-        {/* Pricing Summary */}
+        {/* Pricing Summary - UPDATED */}
         <div className="border rounded-lg p-4 bg-green-50 dark:bg-green-900/20">
           <h3 className="text-lg font-semibold mb-3">Pricing Summary</h3>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 text-sm">
@@ -940,16 +1094,16 @@ function PricingForm({ product, onSave, onCancel }) {
             </div>
             <div>
               <div className="font-medium text-gray-700 dark:text-gray-300">Wholesale Discount</div>
-              <div>15% off retail</div>
+              <div>{((systemSettings?.discounts?.wholesale_discount_rate || 0.15) * 100).toFixed(1)}% off retail</div>
             </div>
             <div>
               <div className="font-medium text-gray-700 dark:text-gray-300">Additional Fees</div>
-              <div>$25 admin + 8% tax</div>
+              <div>${systemSettings?.fees?.admin_fee || 25} admin + {((systemSettings?.taxes?.default_tax_rate || 0.08) * 100).toFixed(1)}% tax</div>
             </div>
           </div>
         </div>
 
-        {/* Action Buttons - Sticky at bottom */}
+        {/* Action Buttons */}
         <div className="flex space-x-3 pt-4 border-t bg-white dark:bg-gray-800 sticky bottom-0 pb-4">
           <Button type="submit" className="flex-1">
             <Save className="w-4 h-4 mr-2" />
