@@ -76,7 +76,7 @@ const QuotePage = () => {
     auto_populated: false
   })
 
-  // Fetch Hero Products on mount
+  // Handle Hero Products loading
   useEffect(() => {
     const fetchHeroProducts = async () => {
       try {
@@ -88,7 +88,23 @@ const QuotePage = () => {
         const result = Array.isArray(rawResult) ? rawResult[0] : rawResult
         
         if (result.success && result.data && result.data.products) {
-          // Map backend product codes to UI-friendly format
+          // Map backend product codes to the exact keys expected by HeroRatingService
+          const productCodeToServiceKey = {
+            'HOME_PROTECTION_PLAN': 'home_protection',
+            'COMPREHENSIVE_AUTO_PROTECTION': 'comprehensive_auto_protection',
+            'HOME_DEDUCTIBLE_REIMBURSEMENT': 'home_deductible_reimbursement',
+            'AUTO_ADVANTAGE_DEDUCTIBLE_REIMBURSEMENT': 'auto_advantage_deductible_reimbursement',
+            'AUTO_ADVANTAGE_DEDUCTIBLE_REIMBURSEMENT_1000': 'auto_advantage_deductible_reimbursement', // Same service key
+            'ALL_VEHICLE_DEDUCTIBLE_REIMBURSEMENT': 'all_vehicle_deductible_reimbursement',
+            'ALL_VEHICLE_DEDUCTIBLE_REIMBURSEMENT_1000': 'all_vehicle_deductible_reimbursement', // Same service key
+            'AUTO_RV_DEDUCTIBLE_REIMBURSEMENT': 'auto_rv_deductible_reimbursement',
+            'AUTO_RV_DEDUCTIBLE_REIMBURSEMENT_1000': 'auto_rv_deductible_reimbursement', // Same service key
+            'MULTI_VEHICLE_DEDUCTIBLE_REIMBURSEMENT': 'multi_vehicle_deductible_reimbursement',
+            'MULTI_VEHICLE_DEDUCTIBLE_REIMBURSEMENT_1000': 'multi_vehicle_deductible_reimbursement', // Same service key
+            'HERO_LEVEL_PROTECTION_FOR_YOUR_HOME': 'hero_level_protection_home'
+          }
+          
+          // Map product codes to UI-friendly format
           const productMap = {
             'HOME_PROTECTION_PLAN': { label: 'Home Protection Plan', icon: Home },
             'COMPREHENSIVE_AUTO_PROTECTION': { label: 'Comprehensive Auto Protection', icon: Car },
@@ -104,49 +120,48 @@ const QuotePage = () => {
             'HERO_LEVEL_PROTECTION_FOR_YOUR_HOME': { label: 'Hero Level Protection Home', icon: Shield }
           }
           
-          const mappedProducts = result.data.products.map(product => ({
-            value: product.product_code.toLowerCase(), // Convert to lowercase to match backend expectations
-            label: productMap[product.product_code]?.label || product.product_name,
-            icon: productMap[product.product_code]?.icon || Shield,
-            basePrice: product.base_price,
-            pricing: product.pricing
-          }))
+          const mappedProducts = result.data.products.map(product => {
+            const serviceKey = productCodeToServiceKey[product.product_code]
+            const coverageLimit = product.product_code.includes('_1000') ? 1000 : 500
+            
+            return {
+              value: serviceKey, // Use the exact key expected by HeroRatingService
+              label: productMap[product.product_code]?.label || product.product_name,
+              icon: productMap[product.product_code]?.icon || Shield,
+              basePrice: product.base_price,
+              pricing: product.pricing,
+              coverageLimit: coverageLimit, // Store coverage limit for the quote
+              originalProductCode: product.product_code // Keep original for reference
+            }
+          })
           
           setHeroProducts(mappedProducts)
         } else {
           console.warn('Invalid API response structure:', result)
-          // Fallback to hard-coded list with corrected values
+          // Fallback to hard-coded list with correct service keys
           setHeroProducts([
-            { value: 'home_protection_plan', label: 'Home Protection Plan', icon: Home },
-            { value: 'comprehensive_auto_protection', label: 'Comprehensive Auto Protection', icon: Car },
-            { value: 'home_deductible_reimbursement', label: 'Home Deductible Reimbursement', icon: Shield },
-            { value: 'auto_advantage_deductible_reimbursement', label: 'Auto Advantage DDR ($500)', icon: Car },
-            { value: 'auto_advantage_deductible_reimbursement_1000', label: 'Auto Advantage DDR ($1000)', icon: Car },
-            { value: 'all_vehicle_deductible_reimbursement', label: 'All Vehicle DDR ($500)', icon: Car },
-            { value: 'all_vehicle_deductible_reimbursement_1000', label: 'All Vehicle DDR ($1000)', icon: Car },
-            { value: 'auto_rv_deductible_reimbursement', label: 'Auto & RV DDR ($500)', icon: Car },
-            { value: 'auto_rv_deductible_reimbursement_1000', label: 'Auto & RV DDR ($1000)', icon: Car },
-            { value: 'multi_vehicle_deductible_reimbursement', label: 'Multi Vehicle DDR ($500)', icon: Car },
-            { value: 'multi_vehicle_deductible_reimbursement_1000', label: 'Multi Vehicle DDR ($1000)', icon: Car },
-            { value: 'hero_level_protection_for_your_home', label: 'Hero Level Protection Home', icon: Shield }
+            { value: 'home_protection', label: 'Home Protection Plan', icon: Home, coverageLimit: 500 },
+            { value: 'comprehensive_auto_protection', label: 'Comprehensive Auto Protection', icon: Car, coverageLimit: 500 },
+            { value: 'home_deductible_reimbursement', label: 'Home Deductible Reimbursement', icon: Shield, coverageLimit: 500 },
+            { value: 'auto_advantage_deductible_reimbursement', label: 'Auto Advantage DDR ($500)', icon: Car, coverageLimit: 500 },
+            { value: 'all_vehicle_deductible_reimbursement', label: 'All Vehicle DDR ($500)', icon: Car, coverageLimit: 500 },
+            { value: 'auto_rv_deductible_reimbursement', label: 'Auto & RV DDR ($500)', icon: Car, coverageLimit: 500 },
+            { value: 'multi_vehicle_deductible_reimbursement', label: 'Multi Vehicle DDR ($500)', icon: Car, coverageLimit: 500 },
+            { value: 'hero_level_protection_home', label: 'Hero Level Protection Home', icon: Shield, coverageLimit: 500 }
           ])
         }
       } catch (err) {
         console.error('Failed to fetch hero products:', err)
-        // Fallback to hard-coded list with corrected values
+        // Fallback to hard-coded list with correct service keys (same as above)
         setHeroProducts([
-          { value: 'home_protection_plan', label: 'Home Protection Plan', icon: Home },
-          { value: 'comprehensive_auto_protection', label: 'Comprehensive Auto Protection', icon: Car },
-          { value: 'home_deductible_reimbursement', label: 'Home Deductible Reimbursement', icon: Shield },
-          { value: 'auto_advantage_deductible_reimbursement', label: 'Auto Advantage DDR ($500)', icon: Car },
-          { value: 'auto_advantage_deductible_reimbursement_1000', label: 'Auto Advantage DDR ($1000)', icon: Car },
-          { value: 'all_vehicle_deductible_reimbursement', label: 'All Vehicle DDR ($500)', icon: Car },
-          { value: 'all_vehicle_deductible_reimbursement_1000', label: 'All Vehicle DDR ($1000)', icon: Car },
-          { value: 'auto_rv_deductible_reimbursement', label: 'Auto & RV DDR ($500)', icon: Car },
-          { value: 'auto_rv_deductible_reimbursement_1000', label: 'Auto & RV DDR ($1000)', icon: Car },
-          { value: 'multi_vehicle_deductible_reimbursement', label: 'Multi Vehicle DDR ($500)', icon: Car },
-          { value: 'multi_vehicle_deductible_reimbursement_1000', label: 'Multi Vehicle DDR ($1000)', icon: Car },
-          { value: 'hero_level_protection_for_your_home', label: 'Hero Level Protection Home', icon: Shield }
+          { value: 'home_protection', label: 'Home Protection Plan', icon: Home, coverageLimit: 500 },
+          { value: 'comprehensive_auto_protection', label: 'Comprehensive Auto Protection', icon: Car, coverageLimit: 500 },
+          { value: 'home_deductible_reimbursement', label: 'Home Deductible Reimbursement', icon: Shield, coverageLimit: 500 },
+          { value: 'auto_advantage_deductible_reimbursement', label: 'Auto Advantage DDR ($500)', icon: Car, coverageLimit: 500 },
+          { value: 'all_vehicle_deductible_reimbursement', label: 'All Vehicle DDR ($500)', icon: Car, coverageLimit: 500 },
+          { value: 'auto_rv_deductible_reimbursement', label: 'Auto & RV DDR ($500)', icon: Car, coverageLimit: 500 },
+          { value: 'multi_vehicle_deductible_reimbursement', label: 'Multi Vehicle DDR ($500)', icon: Car, coverageLimit: 500 },
+          { value: 'hero_level_protection_home', label: 'Hero Level Protection Home', icon: Shield, coverageLimit: 500 }
         ])
       } finally {
         setHeroProductsLoading(false)
@@ -360,12 +375,18 @@ const QuotePage = () => {
         return
       }
 
+      // Find the selected product to get its coverage limit
+      const selectedProduct = heroProducts.find(p => p.value === heroForm.product_type)
+      const coverageLimit = selectedProduct?.coverageLimit || parseInt(heroForm.coverage_limit) || 500
+
       const quoteData = {
-        product_type: heroForm.product_type,
+        product_type: heroForm.product_type, // This is now the correct service key
         term_years: parseInt(heroForm.term_years),
-        coverage_limit: parseInt(heroForm.coverage_limit),
+        coverage_limit: coverageLimit, // Use the product's coverage limit
         customer_type: heroForm.customer_type
       }
+
+      console.log('Sending quote data:', quoteData) // Debug log
 
       const response = await heroAPI.generateQuote(quoteData)
       const responseData = Array.isArray(response) ? response[0] : response
