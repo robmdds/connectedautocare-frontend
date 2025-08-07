@@ -286,16 +286,6 @@ const VSCPage = () => {
         </Alert>
       )}
 
-      {/* Database Status Indicator */}
-      {!vscData.error && healthStatus.database_integration && (
-        <div className="bg-green-50 border-b border-green-200 py-2">
-          <div className="max-w-7xl mx-auto px-4 text-center text-sm text-green-700">
-            ✓ Live pricing from database
-            {healthStatus.pdf_rates_available && " • PDF rates active"}
-          </div>
-        </div>
-      )}
-
       {/* Hero Section */}
       <section className="hero-gradient text-white py-20">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
