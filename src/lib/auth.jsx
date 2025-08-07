@@ -28,21 +28,30 @@ export const AuthProvider = ({ children }) => {
     }
   }, [token]);
 
+  // Updated verifyToken function for your auth context
   const verifyToken = async () => {
     try {
-      const response = await fetch(`${API_BASE_URL}/api/auth/profile`, {
+      const response = await fetch(`${API_BASE_URL}/api/auth/verify-token`, {
+        method: 'POST', // Note: your endpoint expects POST
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
         },
+        body: JSON.stringify({ token }) // Your endpoint also accepts token in body
       });
 
       if (response.ok) {
         const data = await response.json();
-        const userData = data.user || data.data || data;
-        setUser(userData);
-        setIsAuthenticated(true);
+        if (data.valid && data.user) {
+          setUser(data.user);
+          setIsAuthenticated(true);
+        } else {
+          console.log('Token verification failed, logging out');
+          logout();
+        }
       } else {
+        // Token is invalid or expired
+        console.log('Token verification failed, logging out');
         logout();
       }
     } catch (error) {
@@ -68,6 +77,7 @@ export const AuthProvider = ({ children }) => {
       });
 
       const data = await response.json();
+      console.log('Login Response:', data);
 
       if (response.ok && data.token) {
         const { token: authToken, user: userData } = data;
@@ -76,8 +86,9 @@ export const AuthProvider = ({ children }) => {
         setToken(authToken);
         setUser(userData);
         setIsAuthenticated(true);
+        setLoading(false); // Set loading to false here
         localStorage.setItem('token', authToken);
-        
+
         return { success: true, user: userData };
       } else {
         console.error('Login failed:', data);
