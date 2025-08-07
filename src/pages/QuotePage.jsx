@@ -14,12 +14,6 @@ import { heroAPI, vscAPI, formatCurrency, validateQuoteData, handleAPIError } fr
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
-// HelcimJS Configuration
-const HELCIM_CONFIG = {
-  token: import.meta.env.VITE_HELCIM_TOKEN,
-  secretKey: import.meta.env.VITE_HELCIM_SECRET_KEY
-};
-
 const QuotePage = () => {
   const location = useLocation()
   const [searchParams] = useSearchParams()
@@ -76,33 +70,35 @@ const QuotePage = () => {
     auto_populated: false
   })
 
-  // Handle Hero Products loading
+  // Fixed useEffect with proper memoization and cleanup
   useEffect(() => {
+    let isMounted = true; // Flag to prevent state updates if component unmounts
+
     const fetchHeroProducts = async () => {
       try {
-        setHeroProductsLoading(true)
-        const response = await fetch(`${API_BASE_URL}/api/hero/products`)
-        const rawResult = await response.json()
+        setHeroProductsLoading(true);
+        const response = await fetch(`${API_BASE_URL}/api/hero/products`);
+        const result = await response.json();
         
-        // Handle array response format [data, statusCode]
-        const result = Array.isArray(rawResult) ? rawResult[0] : rawResult
+        // Only update state if component is still mounted
+        if (!isMounted) return;
         
-        if (result.success && result.data && result.data.products) {
+        if (result.success && result.products) {
           // Map backend product codes to the exact keys expected by HeroRatingService
           const productCodeToServiceKey = {
             'HOME_PROTECTION_PLAN': 'home_protection',
             'COMPREHENSIVE_AUTO_PROTECTION': 'comprehensive_auto_protection',
             'HOME_DEDUCTIBLE_REIMBURSEMENT': 'home_deductible_reimbursement',
-            'AUTO_ADVANTAGE_DEDUCTIBLE_REIMBURSEMENT': 'auto_advantage_deductible_reimbursement',
-            'AUTO_ADVANTAGE_DEDUCTIBLE_REIMBURSEMENT_1000': 'auto_advantage_deductible_reimbursement', // Same service key
-            'ALL_VEHICLE_DEDUCTIBLE_REIMBURSEMENT': 'all_vehicle_deductible_reimbursement',
-            'ALL_VEHICLE_DEDUCTIBLE_REIMBURSEMENT_1000': 'all_vehicle_deductible_reimbursement', // Same service key
-            'AUTO_RV_DEDUCTIBLE_REIMBURSEMENT': 'auto_rv_deductible_reimbursement',
-            'AUTO_RV_DEDUCTIBLE_REIMBURSEMENT_1000': 'auto_rv_deductible_reimbursement', // Same service key
-            'MULTI_VEHICLE_DEDUCTIBLE_REIMBURSEMENT': 'multi_vehicle_deductible_reimbursement',
-            'MULTI_VEHICLE_DEDUCTIBLE_REIMBURSEMENT_1000': 'multi_vehicle_deductible_reimbursement', // Same service key
+            'AUTO_ADVANTAGE_DEDUCTIBLE_REIMBURSEMENT': 'auto_advantage_deductible_reimbursement_500',
+            'AUTO_ADVANTAGE_DEDUCTIBLE_REIMBURSEMENT_1000': 'auto_advantage_deductible_reimbursement_1000',
+            'ALL_VEHICLE_DEDUCTIBLE_REIMBURSEMENT': 'all_vehicle_deductible_reimbursement_500',
+            'ALL_VEHICLE_DEDUCTIBLE_REIMBURSEMENT_1000': 'all_vehicle_deductible_reimbursement_1000',
+            'AUTO_RV_DEDUCTIBLE_REIMBURSEMENT': 'auto_rv_deductible_reimbursement_500',
+            'AUTO_RV_DEDUCTIBLE_REIMBURSEMENT_1000': 'auto_rv_deductible_reimbursement_1000',
+            'MULTI_VEHICLE_DEDUCTIBLE_REIMBURSEMENT': 'multi_vehicle_deductible_reimbursement_500',
+            'MULTI_VEHICLE_DEDUCTIBLE_REIMBURSEMENT_1000': 'multi_vehicle_deductible_reimbursement_1000',
             'HERO_LEVEL_PROTECTION_FOR_YOUR_HOME': 'hero_level_protection_home'
-          }
+          };
           
           // Map product codes to UI-friendly format
           const productMap = {
@@ -118,58 +114,78 @@ const QuotePage = () => {
             'MULTI_VEHICLE_DEDUCTIBLE_REIMBURSEMENT': { label: 'Multi Vehicle DDR ($500)', icon: Car },
             'MULTI_VEHICLE_DEDUCTIBLE_REIMBURSEMENT_1000': { label: 'Multi Vehicle DDR ($1000)', icon: Car },
             'HERO_LEVEL_PROTECTION_FOR_YOUR_HOME': { label: 'Hero Level Protection Home', icon: Shield }
-          }
+          };
           
-          const mappedProducts = result.data.products.map(product => {
-            const serviceKey = productCodeToServiceKey[product.product_code]
-            const coverageLimit = product.product_code.includes('_1000') ? 1000 : 500
+          const mappedProducts = result.products.map(product => {
+            const serviceKey = productCodeToServiceKey[product.product_code];
+            const coverageLimit = product.product_code.includes('_1000') ? 1000 : 500;
             
             return {
-              value: serviceKey, // Use the exact key expected by HeroRatingService
+              value: serviceKey, // Use unique service keys
               label: productMap[product.product_code]?.label || product.product_name,
               icon: productMap[product.product_code]?.icon || Shield,
               basePrice: product.base_price,
               pricing: product.pricing,
-              coverageLimit: coverageLimit, // Store coverage limit for the quote
-              originalProductCode: product.product_code // Keep original for reference
-            }
-          })
+              coverageLimit: coverageLimit,
+              originalProductCode: product.product_code
+            };
+          });
           
-          setHeroProducts(mappedProducts)
+          setHeroProducts(mappedProducts);
         } else {
-          console.warn('Invalid API response structure:', result)
-          // Fallback to hard-coded list with correct service keys
+          console.warn('Invalid API response structure:', result);
+          // Fallback to hard-coded list with unique service keys
           setHeroProducts([
             { value: 'home_protection', label: 'Home Protection Plan', icon: Home, coverageLimit: 500 },
             { value: 'comprehensive_auto_protection', label: 'Comprehensive Auto Protection', icon: Car, coverageLimit: 500 },
             { value: 'home_deductible_reimbursement', label: 'Home Deductible Reimbursement', icon: Shield, coverageLimit: 500 },
-            { value: 'auto_advantage_deductible_reimbursement', label: 'Auto Advantage DDR ($500)', icon: Car, coverageLimit: 500 },
-            { value: 'all_vehicle_deductible_reimbursement', label: 'All Vehicle DDR ($500)', icon: Car, coverageLimit: 500 },
-            { value: 'auto_rv_deductible_reimbursement', label: 'Auto & RV DDR ($500)', icon: Car, coverageLimit: 500 },
-            { value: 'multi_vehicle_deductible_reimbursement', label: 'Multi Vehicle DDR ($500)', icon: Car, coverageLimit: 500 },
+            { value: 'auto_advantage_deductible_reimbursement_500', label: 'Auto Advantage DDR ($500)', icon: Car, coverageLimit: 500 },
+            { value: 'auto_advantage_deductible_reimbursement_1000', label: 'Auto Advantage DDR ($1000)', icon: Car, coverageLimit: 1000 },
+            { value: 'all_vehicle_deductible_reimbursement_500', label: 'All Vehicle DDR ($500)', icon: Car, coverageLimit: 500 },
+            { value: 'all_vehicle_deductible_reimbursement_1000', label: 'All Vehicle DDR ($1000)', icon: Car, coverageLimit: 1000 },
+            { value: 'auto_rv_deductible_reimbursement_500', label: 'Auto & RV DDR ($500)', icon: Car, coverageLimit: 500 },
+            { value: 'auto_rv_deductible_reimbursement_1000', label: 'Auto & RV DDR ($1000)', icon: Car, coverageLimit: 1000 },
+            { value: 'multi_vehicle_deductible_reimbursement_500', label: 'Multi Vehicle DDR ($500)', icon: Car, coverageLimit: 500 },
+            { value: 'multi_vehicle_deductible_reimbursement_1000', label: 'Multi Vehicle DDR ($1000)', icon: Car, coverageLimit: 1000 },
             { value: 'hero_level_protection_home', label: 'Hero Level Protection Home', icon: Shield, coverageLimit: 500 }
-          ])
+          ]);
         }
       } catch (err) {
-        console.error('Failed to fetch hero products:', err)
-        // Fallback to hard-coded list with correct service keys (same as above)
+        console.error('Failed to fetch hero products:', err);
+        if (!isMounted) return;
+        
+        // Fallback to hard-coded list with unique service keys
         setHeroProducts([
           { value: 'home_protection', label: 'Home Protection Plan', icon: Home, coverageLimit: 500 },
           { value: 'comprehensive_auto_protection', label: 'Comprehensive Auto Protection', icon: Car, coverageLimit: 500 },
           { value: 'home_deductible_reimbursement', label: 'Home Deductible Reimbursement', icon: Shield, coverageLimit: 500 },
-          { value: 'auto_advantage_deductible_reimbursement', label: 'Auto Advantage DDR ($500)', icon: Car, coverageLimit: 500 },
-          { value: 'all_vehicle_deductible_reimbursement', label: 'All Vehicle DDR ($500)', icon: Car, coverageLimit: 500 },
-          { value: 'auto_rv_deductible_reimbursement', label: 'Auto & RV DDR ($500)', icon: Car, coverageLimit: 500 },
-          { value: 'multi_vehicle_deductible_reimbursement', label: 'Multi Vehicle DDR ($500)', icon: Car, coverageLimit: 500 },
+          { value: 'auto_advantage_deductible_reimbursement_500', label: 'Auto Advantage DDR ($500)', icon: Car, coverageLimit: 500 },
+          { value: 'auto_advantage_deductible_reimbursement_1000', label: 'Auto Advantage DDR ($1000)', icon: Car, coverageLimit: 1000 },
+          { value: 'all_vehicle_deductible_reimbursement_500', label: 'All Vehicle DDR ($500)', icon: Car, coverageLimit: 500 },
+          { value: 'all_vehicle_deductible_reimbursement_1000', label: 'All Vehicle DDR ($1000)', icon: Car, coverageLimit: 1000 },
+          { value: 'auto_rv_deductible_reimbursement_500', label: 'Auto & RV DDR ($500)', icon: Car, coverageLimit: 500 },
+          { value: 'auto_rv_deductible_reimbursement_1000', label: 'Auto & RV DDR ($1000)', icon: Car, coverageLimit: 1000 },
+          { value: 'multi_vehicle_deductible_reimbursement_500', label: 'Multi Vehicle DDR ($500)', icon: Car, coverageLimit: 500 },
+          { value: 'multi_vehicle_deductible_reimbursement_1000', label: 'Multi Vehicle DDR ($1000)', icon: Car, coverageLimit: 1000 },
           { value: 'hero_level_protection_home', label: 'Hero Level Protection Home', icon: Shield, coverageLimit: 500 }
-        ])
+        ]);
       } finally {
-        setHeroProductsLoading(false)
+        if (isMounted) {
+          setHeroProductsLoading(false);
+        }
       }
+    };
+
+    // Only fetch if not already loaded
+    if (heroProducts.length === 0 && heroProductsLoading) {
+      fetchHeroProducts();
     }
 
-    fetchHeroProducts()
-  }, [])
+    // Cleanup function
+    return () => {
+      isMounted = false;
+    };
+  }, []); // Empty dependency array - only run once on mount
 
   // Handle URL parameters on component mount
   useEffect(() => {
@@ -193,7 +209,6 @@ const QuotePage = () => {
       }
     }
   }, [searchParams])
-
 
   const vehicleMakes = [
     'Honda', 'Toyota', 'Nissan', 'Hyundai', 'Kia', 'Lexus', 'Mazda', 'Mitsubishi', 'Subaru',
@@ -261,16 +276,16 @@ const QuotePage = () => {
 
   // Decode VIN and populate vehicle fields
   const decodeVIN = async (vin) => {
-    const validation = validateVIN(vin)
+    const validation = validateVIN(vin);
     if (!validation.valid) {
-      setVinError(validation.message)
-      return
+      setVinError(validation.message);
+      return;
     }
 
-    setVinDecoding(true)
-    setVinError('')
-    setVinInfo(null)
-    setEligibilityCheck(null)
+    setVinDecoding(true);
+    setVinError('');
+    setVinInfo(null);
+    setEligibilityCheck(null);
 
     try {
       const response = await fetch(`${API_BASE_URL}/api/vin/decode`, {
@@ -282,49 +297,79 @@ const QuotePage = () => {
           vin: vin.toUpperCase(),
           mileage: parseInt(vscForm.mileage) || null
         })
-      })
+      });
 
-      const rawResult = await response.json()
-      const result = Array.isArray(rawResult) ? rawResult[0] : rawResult
+      const result = await response.json();
+      console.log('VIN Decode Response:', result); // Debug log
 
-      if (result.success && result.data) {
-        const vehicleInfo = result.data.vehicle_info || result.data
-        setVinInfo(vehicleInfo)
+      if (result.success) {
+        // Extract vehicle info from either vehicle_info or root level
+        const vehicleInfo = result.vehicle_info || result.data?.vehicle_info || result;
+        
+        // Set vehicle information
+        setVinInfo(vehicleInfo);
 
-        const decodedMake = (vehicleInfo.make || '').toLowerCase()
-        const matchedMake = vehicleMakes.find(make => make.toLowerCase() === decodedMake) || vehicleInfo.make || ''
+        // Find matching make from our list or use the decoded make
+        const decodedMake = (vehicleInfo.make || '').toLowerCase();
+        const matchedMake = vehicleMakes.find(make => make.toLowerCase() === decodedMake) || vehicleInfo.make || '';
 
+        // Update form with decoded information
         const updatedForm = {
           ...vscForm,
+          vin: vin.toUpperCase(),
           make: matchedMake,
           model: vehicleInfo.model || vscForm.model,
           year: vehicleInfo.year ? vehicleInfo.year.toString() : '',
           auto_populated: true
+        };
+
+        setVscForm(updatedForm);
+        setVinError('');
+
+        // Process eligibility information if available
+        if (result.eligibility) {
+          const eligibilityResult = {
+            eligible: result.eligibility.eligible,
+            warnings: result.eligibility.warnings || [],
+            restrictions: result.eligibility.restrictions || [],
+            vehicleAge: vehicleInfo.vehicle_age,
+            assessmentDate: result.eligibility.assessment_date,
+            coverageOptions: result.eligibility.coverage_options
+          };
+          setEligibilityCheck(eligibilityResult);
+        } else {
+          // Fallback to local eligibility check if API didn't provide one
+          if (vehicleInfo.year && vscForm.mileage) {
+            const localEligibility = checkVehicleEligibilityUpdated(
+              vehicleInfo, 
+              vscForm.mileage
+            );
+            setEligibilityCheck(localEligibility);
+          }
         }
 
-        setVscForm(updatedForm)
-        setVinError('')
       } else {
-        setVinError(result.error || 'Failed to decode VIN')
+        setVinError(result.error || 'Failed to decode VIN');
         setVscForm(prev => ({
           ...prev,
           make: '',
           model: '',
           year: '',
           auto_populated: false
-        }))
+        }));
       }
     } catch (err) {
-      setVinError('VIN decoder service unavailable')
+      console.error('VIN decode error:', err);
+      setVinError('VIN decoder service unavailable');
       setVscForm(prev => ({
         ...prev,
         make: '',
         model: '',
         year: '',
         auto_populated: false
-      }))
+      }));
     } finally {
-      setVinDecoding(false)
+      setVinDecoding(false);
     }
   }
 
@@ -360,8 +405,6 @@ const QuotePage = () => {
     }
   }, [vscForm.mileage, vinInfo])
 
-
-
   const handleHeroSubmit = async (e) => {
     e.preventDefault()
     setLoading(true)
@@ -375,24 +418,30 @@ const QuotePage = () => {
         return
       }
 
-      // Find the selected product to get its coverage limit
+      // Find the selected product
       const selectedProduct = heroProducts.find(p => p.value === heroForm.product_type)
       const coverageLimit = selectedProduct?.coverageLimit || parseInt(heroForm.coverage_limit) || 500
 
+      // Strip the coverage limit suffix from product type if it exists
+      const baseProductType = heroForm.product_type.replace(/_500|_1000/g, '')
+
       const quoteData = {
-        product_type: heroForm.product_type, // This is now the correct service key
+        product_type: baseProductType,
         term_years: parseInt(heroForm.term_years),
-        coverage_limit: coverageLimit, // Use the product's coverage limit
+        coverage_limit: coverageLimit,
         customer_type: heroForm.customer_type
       }
 
-      console.log('Sending quote data:', quoteData) // Debug log
+      console.log('Sending quote data:', quoteData)
 
       const response = await heroAPI.generateQuote(quoteData)
+      console.log('Received quote response:', response)
       const responseData = Array.isArray(response) ? response[0] : response
+      console.log('Processed quote response:', responseData)
       
-      if (responseData.success && responseData.data) {
-        setQuote(responseData.data)
+      if (responseData.success) {
+        // Set the entire responseData as the quote, not responseData.data
+        setQuote(responseData)
         setShowPayment(false)
         setPaymentResult(null)
       } else {
@@ -439,8 +488,8 @@ const QuotePage = () => {
       const response = await vscAPI.generateQuote(quoteData)
       const responseData = Array.isArray(response) ? response[0] : response
 
-      if (responseData.success && responseData.data) {
-        setQuote(responseData.data)
+      if (responseData.success) {
+        setQuote(responseData)
         setShowPayment(false)
         setPaymentResult(null)
       } else {

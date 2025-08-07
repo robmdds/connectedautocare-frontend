@@ -51,34 +51,19 @@ const HomePage = () => {
           throw new Error(`HTTP ${response.status}: ${response.statusText}`);
         }
         
-        const rawData = await response.json();
+        const data = await response.json();
         
-        let data;
-        if (Array.isArray(rawData)) {
-          data = rawData[0]; 
-        } else {
-          data = rawData;
-        }
+        // Handle the new direct response format
+        setVideoData({
+          video_url: data.video_url || '',
+          thumbnail_url: data.thumbnail_url || '',
+          title: data.title || 'ConnectedAutoCare Hero Protection',
+          description: data.description || 'Comprehensive protection plans',
+          duration: data.duration || '2:30',
+          loading: false,
+          error: null
+        });
         
-        if (data.success && data.data) {
-          const videoInfo = data.data;
-         
-          setVideoData({
-            video_url: videoInfo.video_url || '',
-            thumbnail_url: videoInfo.thumbnail_url || '',
-            title: videoInfo.title || 'ConnectedAutoCare Hero Protection',
-            description: videoInfo.description || 'Comprehensive protection plans',
-            duration: videoInfo.duration || '2:30',
-            loading: false,
-            error: null
-          });
-        } else {
-          setVideoData(prev => ({
-            ...prev,
-            loading: false,
-            error: 'Invalid response format'
-          }));
-        }
       } catch (error) {
         console.error('Error fetching video:', error);
         setVideoData(prev => ({
@@ -90,7 +75,7 @@ const HomePage = () => {
     };
 
     fetchVideoData();
-  }, []);
+    }, []);
 
   // Animate stats on load
   useEffect(() => {

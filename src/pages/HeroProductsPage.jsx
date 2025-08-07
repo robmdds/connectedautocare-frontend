@@ -31,74 +31,77 @@ const HeroProductsPage = () => {
   useEffect(() => {
     const fetchProducts = async () => {
       try {
-        const response = await heroAPI.getAllProducts()
+        const response = await heroAPI.getAllProducts();
         
-        // Handle response format: [responseData, statusCode]
-        let responseData = response
-        if (Array.isArray(response) && response.length >= 1) {
-          responseData = response[0] // Get the actual data from the array
-        }
+        // The response is now a single object with data_source and products array
+        let responseData = response;
         
-        const allProducts = []
+        const allProducts = [];
         
-        // Check if we have the new database format
-        if (responseData && responseData.data && responseData.data.products && Array.isArray(responseData.data.products)) {
-          
-          responseData.data.products.forEach((product, index) => {
-            
+        // Check if we have the expected database format
+        if (responseData && responseData.products && Array.isArray(responseData.products)) {
+          responseData.products.forEach((product) => {
             // Validate required fields
             if (!product.product_code || !product.base_price) {
-              return
+              return;
             }
             
             // Use product_code and product_name directly
-            const productCode = product.product_code
-            const productName = product.product_name || generateProductNameFromType(product.product_code)
+            const productCode = product.product_code;
+            const productName = product.product_name || generateProductNameFromType(product.product_code);
             
             // Determine category from product_code
-            let category = 'deductible_reimbursement'
-            let categoryName = 'Deductible Reimbursement'
+            let category = 'deductible_reimbursement';
+            let categoryName = 'Deductible Reimbursement';
             
-            const productCodeLower = product.product_code.toLowerCase()
+            const productCodeLower = product.product_code.toLowerCase();
             
             if (productCodeLower.includes('home_protection') || productCodeLower.includes('hero_level_protection_home')) {
-              category = 'home_protection'
-              categoryName = 'Home Protection'
+              category = 'home_protection';
+              categoryName = 'Home Protection';
             } else if (productCodeLower.includes('auto_protection')) {
-              category = 'auto_protection'  
-              categoryName = 'Auto Protection'
+              category = 'auto_protection';  
+              categoryName = 'Auto Protection';
             }
             
             // Calculate price range from pricing data
-            let minPrice = product.base_price || 0
-            let maxPrice = product.base_price || 0
+            let minPrice = product.base_price || 0;
+            let maxPrice = product.base_price || 0;
             
             if (product.pricing && typeof product.pricing === 'object') {
               try {
                 const prices = Object.values(product.pricing)
                   .filter(p => p && typeof p === 'object' && p.price)
-                  .map(p => p.price)
+                  .map(p => p.price);
                 
                 if (prices.length > 0) {
-                  minPrice = Math.min(...prices)
-                  maxPrice = Math.max(...prices)
+                  minPrice = Math.min(...prices);
+                  maxPrice = Math.max(...prices);
                 }
               } catch (e) {
-                console.warn('Error processing pricing data for product:', productCode, e)
+                console.warn('Error processing pricing data for product:', productCode, e);
               }
             }
             
             // Get available terms from pricing data
-            let availableTerms = [1]
+            let availableTerms = [1];
             if (product.pricing && typeof product.pricing === 'object') {
               availableTerms = Object.keys(product.pricing)
                 .map(Number)
                 .filter(n => !isNaN(n))
-                .sort()
+                .sort();
               
               if (availableTerms.length === 0) {
-                availableTerms = [1]
+                availableTerms = [1];
               }
+            }
+            
+            // Determine coverage limits based on product code
+            let coverageLimits = [500];
+            if (productCodeLower.includes('1000')) {
+              coverageLimits = [1000];
+            } else if (productCodeLower.includes('500')) {
+              coverageLimits = [500];
             }
             
             const processedProduct = {
@@ -114,57 +117,32 @@ const HeroProductsPage = () => {
               max_price: Math.round(maxPrice),
               terms: availableTerms,
               features: generateProductFeatures(productCode),
-              coverage_limits: [500, 1000],
+              coverage_limits: coverageLimits,
               pricing: product.pricing || {},
-              data_source: responseData.data.data_source || 'database'
-            }
+              data_source: responseData.data_source || 'database'
+            };
             
-            allProducts.push(processedProduct)
-          })
+            allProducts.push(processedProduct);
+          });
         } 
-        // Fallback to old format if needed
-        else if (responseData && responseData.data && typeof responseData.data === 'object') {
-          Object.entries(responseData.data).forEach(([categoryKey, categoryInfo]) => {
-            if (categoryInfo && categoryInfo.products && Array.isArray(categoryInfo.products)) {
-              categoryInfo.products.forEach(product => {
-                if (product.product_code && product.product_name) {
-                  allProducts.push({
-                    ...product,
-                    category: categoryKey,
-                    category_name: categoryInfo.category_name,
-                    category_description: categoryInfo.category_description,
-                    id: product.product_code,
-                    name: product.product_name,
-                    description: product.detailed_description,
-                    short_description: product.short_description,
-                    min_price: product.price_range?.min_price || product.base_price,
-                    max_price: product.price_range?.max_price || product.base_price,
-                    terms: product.terms_available || [1, 2, 3],
-                    features: product.features || [],
-                    coverage_limits: product.coverage_limits || []
-                  })
-                }
-              })
-            }
-          })
-        }
         // If no valid format found, use fallback
         else {
-          allProducts.push(...getFallbackProducts())
+          allProducts.push(...getFallbackProducts());
         }
-        setProducts(allProducts)
+        
+        setProducts(allProducts);
         
       } catch (error) {
-        console.error('Failed to fetch products:', error)
+        console.error('Failed to fetch products:', error);
         // Set fallback products with July 2025 pricing
-        setProducts(getFallbackProducts())
+        setProducts(getFallbackProducts());
       } finally {
-        setLoading(false)
+        setLoading(false);
       }
-    }
+    };
 
-    fetchProducts()
-  }, [])
+    fetchProducts();
+  }, []);
 
   // Helper function to generate product descriptions
   const generateProductDescription = (productName) => {
