@@ -1,22 +1,76 @@
 import React, { useState } from 'react'
-import { Link, useLocation } from 'react-router-dom'
-import { Menu, X, Shield, Phone, Mail } from 'lucide-react'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
+import { Menu, X, Shield, Phone, Mail, User, LogOut } from 'lucide-react'
 import { Button } from './ui/button'
+import { useAuth } from '../management/lib/auth'
 
 const Header = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
+  const { user, isAuthenticated, logout, loading } = useAuth()
   const location = useLocation()
+  const navigate = useNavigate()
 
-  const navigation = [
-    { name: 'Home', href: '/' },
-    { name: 'Hero Products', href: '/hero-products' },
-    { name: 'VSC Coverage', href: '/vsc' },
-    { name: 'Get Quote', href: '/quote' },
-    { name: 'About', href: '/about' },
-    { name: 'Contact', href: '/contact' },
-  ]
+  // Navigation items based on user role
+  const getNavigation = () => {
+    const baseNavigation = [
+      { name: 'Home', href: '/' },
+      { name: 'Hero Products', href: '/hero-products' },
+      { name: 'VSC Coverage', href: '/vsc' },
+      { name: 'Get Quote', href: '/quote' },
+      { name: 'About', href: '/about' },
+      { name: 'Contact', href: '/contact' },
+    ]
+
+    // Add Dashboard for authenticated resellers
+    if (isAuthenticated && user?.role === 'wholesale_reseller') {
+      return [
+        { name: 'Home', href: '/' },
+        { name: 'Dashboard', href: '/dashboard' },
+        { name: 'Hero Products', href: '/hero-products' },
+        { name: 'VSC Coverage', href: '/vsc' },
+        { name: 'Get Quote', href: '/quote' },
+        { name: 'About', href: '/about' },
+        { name: 'Contact', href: '/contact' },
+      ]
+    }
+
+    return baseNavigation
+  }
+
+  const navigation = getNavigation()
 
   const isActive = (path) => location.pathname === path
+
+  // Handle login functionality
+  const handleLogin = () => {
+    // Navigate to a login page instead of direct authentication
+    navigate('/login')
+  }
+
+  const handleLogout = async () => {
+    try {
+      await logout()
+      navigate('/')
+    } catch (error) {
+      console.error('Logout failed:', error)
+      // Still navigate home even if logout fails
+      navigate('/')
+    }
+  }
+
+  // Get user display name
+  const getUserDisplayName = () => {
+    if (user?.profile?.first_name && user?.profile?.last_name) {
+      return `${user.profile.first_name} ${user.profile.last_name}`
+    }
+    if (user?.business_name) {
+      return user.business_name
+    }
+    if (user?.email) {
+      return user.email.split('@')[0]
+    }
+    return 'User'
+  }
 
   return (
     <header className="bg-white shadow-sm border-b sticky top-0 z-50">
@@ -38,6 +92,36 @@ const Header = () => {
             </div>
             <div className="hidden md:flex items-center space-x-4">
               <span>Protection that pays</span>
+              {/* Login/Logout button in top bar */}
+              {loading ? (
+                <div className="text-primary-foreground text-xs">Loading...</div>
+              ) : isAuthenticated ? (
+                <div className="flex items-center space-x-2">
+                  <span className="text-primary-foreground text-xs">
+                    Welcome, {getUserDisplayName()}
+                    {user?.role === 'wholesale_reseller' && ' (Reseller)'}
+                  </span>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={handleLogout}
+                    className="text-primary-foreground hover:text-blue-200 hover:bg-blue-600/20 h-auto p-1"
+                  >
+                    <LogOut className="h-4 w-4 mr-1" />
+                    Logout
+                  </Button>
+                </div>
+              ) : (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleLogin}
+                  className="text-primary-foreground hover:text-blue-200 hover:bg-blue-600/20 h-auto p-1"
+                >
+                  <User className="h-4 w-4 mr-1" />
+                  Reseller Login
+                </Button>
+              )}
             </div>
           </div>
         </div>
@@ -76,9 +160,15 @@ const Header = () => {
 
           {/* CTA Button */}
           <div className="hidden md:flex items-center space-x-4">
-            <Button asChild>
-              <Link to="/quote">Get Instant Quote</Link>
-            </Button>
+            {isAuthenticated && user?.role === 'wholesale_reseller' ? (
+              <Button asChild>
+                <Link to="/quote">Create Quote</Link>
+              </Button>
+            ) : (
+              <Button asChild>
+                <Link to="/quote">Get Instant Quote</Link>
+              </Button>
+            )}
           </div>
 
           {/* Mobile menu button */}
@@ -114,12 +204,55 @@ const Header = () => {
                 {item.name}
               </Link>
             ))}
-            <div className="pt-4 border-t">
-              <Button asChild className="w-full">
-                <Link to="/quote" onClick={() => setIsMenuOpen(false)}>
-                  Get Instant Quote
-                </Link>
-              </Button>
+            <div className="pt-4 border-t space-y-2">
+              {isAuthenticated && user?.role === 'wholesale_reseller' ? (
+                <Button asChild className="w-full">
+                  <Link to="/quote" onClick={() => setIsMenuOpen(false)}>
+                    Create Quote
+                  </Link>
+                </Button>
+              ) : (
+                <Button asChild className="w-full">
+                  <Link to="/quote" onClick={() => setIsMenuOpen(false)}>
+                    Get Instant Quote
+                  </Link>
+                </Button>
+              )}
+              
+              {/* Mobile login/logout section */}
+              {loading ? (
+                <div className="text-center text-sm text-muted-foreground">Loading...</div>
+              ) : isAuthenticated ? (
+                <div className="space-y-2">
+                  <div className="text-center text-sm text-muted-foreground">
+                    Welcome, {getUserDisplayName()}
+                    {user?.role === 'wholesale_reseller' && ' (Reseller)'}
+                  </div>
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      handleLogout()
+                      setIsMenuOpen(false)
+                    }}
+                    className="w-full"
+                  >
+                    <LogOut className="h-4 w-4 mr-2" />
+                    Logout
+                  </Button>
+                </div>
+              ) : (
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    handleLogin()
+                    setIsMenuOpen(false)
+                  }}
+                  className="w-full"
+                >
+                  <User className="h-4 w-4 mr-2" />
+                  Reseller Login
+                </Button>
+              )}
             </div>
           </div>
         </div>
@@ -129,4 +262,3 @@ const Header = () => {
 }
 
 export default Header
-

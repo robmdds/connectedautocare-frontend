@@ -46,16 +46,13 @@ export const AuthProvider = ({ children }) => {
           setUser(data.user);
           setIsAuthenticated(true);
         } else {
-          console.log('Token verification failed, logging out');
           logout();
         }
       } else {
         // Token is invalid or expired
-        console.log('Token verification failed, logging out');
         logout();
       }
     } catch (error) {
-      console.error('Token verification failed:', error);
       logout();
     } finally {
       setLoading(false);

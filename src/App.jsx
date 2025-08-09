@@ -13,6 +13,7 @@ import VSCPage from './pages/VSCPage';
 import QuotePage from './pages/QuotePage';
 import AboutPage from './pages/AboutPage';
 import Contact from './pages/ContactPage';
+import SharedQuotePage from "@/pages/SharedQuotePage.jsx";
 
 // Management interface components
 import LoginPage from './management/components/LoginPage';
@@ -244,6 +245,12 @@ const App = () => {
                 </>
               }
             />
+              <Route
+                  path="/quote/shared/:shareToken"
+                  element={
+                  <SharedQuotePage />
+                  }
+              />
 
             {/* Public route (management interface) */}
             <Route

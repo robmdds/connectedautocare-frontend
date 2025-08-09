@@ -206,24 +206,6 @@ const LoginPage = () => {
                   </Button>
                 </form>
 
-                {/* Demo Accounts */}
-                <div className="mt-6 p-4 bg-gray-50 rounded-lg">
-                  <h4 className="font-medium text-gray-900 mb-3">Demo Accounts</h4>
-                  <div className="space-y-2 text-sm">
-                    <div className="flex items-center justify-between">
-                      <span className="text-gray-600">Admin:</span>
-                      <code className="bg-white px-2 py-1 rounded text-xs">admin@connectedautocare.com / Admin123!</code>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-gray-600">Reseller:</span>
-                      <code className="bg-white px-2 py-1 rounded text-xs">reseller@example.com / Reseller123!</code>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-gray-600">Customer:</span>
-                      <code className="bg-white px-2 py-1 rounded text-xs">customer@example.com / Customer123!</code>
-                    </div>
-                  </div>
-                </div>
               </TabsContent>
 
               {/* Registration Tab */}

@@ -256,7 +256,6 @@ export default function VideoManagement() {
       }
 
       const rawData = await response.json();
-      console.log('Upload response:', rawData); // Debug log
       
       // Handle array response format [responseData, statusCode]
       let data;
@@ -265,8 +264,6 @@ export default function VideoManagement() {
       } else {
         data = rawData;
       }
-      
-      console.log('Extracted data:', data); // Debug log
       
       // Handle different response structures
       let uploadedVideo;
@@ -283,8 +280,6 @@ export default function VideoManagement() {
         // Last resort: use the whole data object
         uploadedVideo = data;
       }
-      
-      console.log('Processed video info:', uploadedVideo); // Debug log
       
       if (uploadedVideo) {
         setVideoInfo(uploadedVideo);

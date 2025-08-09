@@ -104,8 +104,8 @@ export default function VSCCoverageManagement() {
 
   const loadCoverageLevels = async () => {
     try {
-      const [response, status] = await apiCall('/api/admin/vsc/coverage-levels');
-      if (response.success && status === 200 && Array.isArray(response.data.coverage_levels)) {
+      const response = await apiCall('/api/admin/vsc/coverage-levels');
+      if (response.success && response.data && Array.isArray(response.data.coverage_levels)) {
         const validLevels = response.data.coverage_levels
           .filter(level =>
             level.id &&
@@ -131,8 +131,8 @@ export default function VSCCoverageManagement() {
 
   const loadBaseRates = async () => {
     try {
-      const [response, status] = await apiCall('/api/admin/vsc/base-rates');
-      if (response.success && status === 200 && Array.isArray(response.data.base_rates)) {
+      const response = await apiCall('/api/admin/vsc/base-rates');
+      if (response.success && Array.isArray(response.data.base_rates)) {
         const validRates = response.data.base_rates
           .filter(rate =>
             rate.id &&
@@ -158,8 +158,8 @@ export default function VSCCoverageManagement() {
 
   const loadVehicleClasses = async () => {
     try {
-      const [response, status] = await apiCall('/api/admin/vsc/vehicle-classes');
-      if (response.success && status === 200 && Array.isArray(response.data.vehicle_classifications)) {
+      const response = await apiCall('/api/admin/vsc/vehicle-classes');
+      if (response.success && Array.isArray(response.data.vehicle_classifications)) {
         const validClasses = response.data.vehicle_classifications
           .filter(vClass => 
             vClass.id &&
@@ -187,8 +187,8 @@ export default function VSCCoverageManagement() {
 
   const loadRateMatrix = async () => {
     try {
-      const [response, status] = await apiCall('/api/admin/vsc/rates?per_page=100');
-      if (response.success && status === 200 && Array.isArray(response.data.rates)) {
+      const response = await apiCall('/api/admin/vsc/rates?per_page=100');
+      if (response.success && Array.isArray(response.data.rates)) {
         const validRates = response.data.rates
           .filter(rate =>
             rate.id &&
@@ -224,8 +224,8 @@ export default function VSCCoverageManagement() {
       const multiplierData = {};
 
       for (const type of types) {
-        const [response, status] = await apiCall(`/api/admin/vsc/multipliers/${type}`);
-        if (response.success && status === 200 && Array.isArray(response.data.multipliers)) {
+        const response = await apiCall(`/api/admin/vsc/multipliers/${type}`);
+        if (response.success && Array.isArray(response.data.multipliers)) {
           // Improved filtering logic for different multiplier types
           multiplierData[type] = response.data.multipliers.filter(multiplier => {
             // Basic validation
@@ -271,8 +271,8 @@ export default function VSCCoverageManagement() {
 
   const loadAnalytics = async () => {
     try {
-      const [response, status] = await apiCall('/api/admin/vsc/analytics/rates-summary');
-      if (response.success && status === 200 && response.data?.summary) {
+      const response = await apiCall('/api/admin/vsc/analytics/rates-summary');
+      if (response.success && response.data?.summary) {
         setAnalytics(response.data);
       } else {
         showNotification('Invalid analytics response', 'error');
@@ -285,17 +285,17 @@ export default function VSCCoverageManagement() {
 
   const createCoverageLevel = async (levelData) => {
     try {
-      const [response, status] = await apiCall('/api/admin/vsc/coverage-levels', {
+      const response = await apiCall('/api/admin/vsc/coverage-levels', {
         method: 'POST',
         body: JSON.stringify(levelData),
       });
 
-      if (response.success && status === 200) {
+      if (response.success) {
         await loadCoverageLevels();
         showNotification('Coverage level created successfully');
-        setShowCreateDialog(false); // Close create dialog
+        setShowCreateDialog(false);
       } else {
-        showNotification('Failed to create coverage level', 'error');
+        showNotification(response.message || 'Failed to create coverage level', 'error');
       }
     } catch (error) {
       console.error('Failed to create coverage level:', error);
@@ -305,17 +305,17 @@ export default function VSCCoverageManagement() {
 
   const updateCoverageLevel = async (id, levelData) => {
     try {
-      const [response, status] = await apiCall(`/api/admin/vsc/coverage-levels/${id}`, {
+      const response = await apiCall(`/api/admin/vsc/coverage-levels/${id}`, {
         method: 'PUT',
         body: JSON.stringify(levelData),
       });
 
-      if (response.success && status === 200) {
+      if (response.success) {
         await loadCoverageLevels();
         showNotification('Coverage level updated successfully');
-        setEditingItem(null); // Close dialog
+        setEditingItem(null);
       } else {
-        showNotification('Failed to update coverage level', 'error');
+        showNotification(response.message || 'Failed to update coverage level', 'error');
       }
     } catch (error) {
       console.error('Failed to update coverage level:', error);
@@ -325,17 +325,17 @@ export default function VSCCoverageManagement() {
 
   const createVehicleClass = async (classData) => {
     try {
-      const [response, status] = await apiCall('/api/admin/vsc/vehicle-classes', {
+      const response = await apiCall('/api/admin/vsc/vehicle-classes', {
         method: 'POST',
         body: JSON.stringify(classData),
       });
 
-      if (response.success && status === 200) {
+      if (response.success) {
         await loadVehicleClasses();
         showNotification('Vehicle classification created successfully');
-        setShowCreateDialog(false); // Close create dialog
+        setShowCreateDialog(false);
       } else {
-        showNotification('Failed to create vehicle classification', 'error');
+        showNotification(response.message || 'Failed to create vehicle classification', 'error');
       }
     } catch (error) {
       console.error('Failed to create vehicle classification:', error);
@@ -345,17 +345,17 @@ export default function VSCCoverageManagement() {
 
   const updateVehicleClass = async (id, classData) => {
     try {
-      const [response, status] = await apiCall(`/api/admin/vsc/vehicle-classes/${id}`, {
+      const response = await apiCall(`/api/admin/vsc/vehicle-classes/${id}`, {
         method: 'PUT',
         body: JSON.stringify(classData),
       });
 
-      if (response.success && status === 200) {
+      if (response.success) {
         await loadVehicleClasses();
         showNotification('Vehicle classification updated successfully');
-        setEditingItem(null); // Close dialog
+        setEditingItem(null);
       } else {
-        showNotification('Failed to update vehicle classification', 'error');
+        showNotification(response.message || 'Failed to update vehicle classification', 'error');
       }
     } catch (error) {
       console.error('Failed to update vehicle classification:', error);
@@ -365,17 +365,17 @@ export default function VSCCoverageManagement() {
 
   const createBaseRate = async (rateData) => {
     try {
-      const [response, status] = await apiCall('/api/admin/vsc/base-rates', {
+      const response = await apiCall('/api/admin/vsc/base-rates', {
         method: 'POST',
         body: JSON.stringify(rateData),
       });
 
-      if (response.success && status === 200) {
+      if (response.success) {
         await loadBaseRates();
         showNotification('Base rate created successfully');
-        setShowCreateDialog(false); // Close create dialog
+        setShowCreateDialog(false);
       } else {
-        showNotification('Failed to create base rate', 'error');
+        showNotification(response.message || 'Failed to create base rate', 'error');
       }
     } catch (error) {
       console.error('Failed to create base rate:', error);
@@ -385,17 +385,17 @@ export default function VSCCoverageManagement() {
 
   const updateBaseRate = async (id, rateData) => {
     try {
-      const [response, status] = await apiCall(`/api/admin/vsc/base-rates/${id}`, {
+      const response = await apiCall(`/api/admin/vsc/base-rates/${id}`, {
         method: 'PUT',
         body: JSON.stringify(rateData),
       });
 
-      if (response.success && status === 200) {
+      if (response.success) {
         await loadBaseRates();
         showNotification('Base rate updated successfully');
-        setEditingItem(null); // Close dialog
+        setEditingItem(null);
       } else {
-        showNotification('Failed to update base rate', 'error');
+        showNotification(response.message || 'Failed to update base rate', 'error');
       }
     } catch (error) {
       console.error('Failed to update base rate:', error);
@@ -477,19 +477,25 @@ export default function VSCCoverageManagement() {
     }
   };
 
+  const handleEditMultiplier = (multiplier, type) => {
+    setEditingItem(multiplier);
+    setEditingMultiplierType(type);
+    setShowMultiplierDialog(true);
+  };
+
   const updateRate = async (id, rateData) => {
     try {
-      const [response, status] = await apiCall(`/api/admin/vsc/rates/${id}`, {
+      const response = await apiCall(`/api/admin/vsc/rates/${id}`, {
         method: 'PUT',
         body: JSON.stringify(rateData),
       });
 
-      if (response.success && status === 200) {
+      if (response.success) {
         await loadRateMatrix();
         showNotification('Rate updated successfully');
         setEditingItem(null); // Close dialog
       } else {
-        showNotification('Failed to update rate', 'error');
+        showNotification(response.message || 'Failed to update rate', 'error');
       }
     } catch (error) {
       console.error('Failed to update rate:', error);
@@ -497,27 +503,21 @@ export default function VSCCoverageManagement() {
     }
   };
 
-  const handleEditMultiplier = (multiplier, type) => {
-    setEditingItem(multiplier);
-    setEditingMultiplierType(type);
-    setShowMultiplierDialog(true);
-  };
-
   const updateMultiplier = async (id, multiplierData, type) => {
     try {
-      const [response, status] = await apiCall(`/api/admin/vsc/multipliers/${type}/${id}`, {
+      const response = await apiCall(`/api/admin/vsc/multipliers/${type}/${id}`, {
         method: 'PUT',
         body: JSON.stringify(multiplierData),
       });
 
-      if (response.success && status === 200) {
+      if (response.success) {
         await loadMultipliers();
         showNotification(`${type} multiplier updated successfully`);
         setEditingItem(null); // Close dialog
         setShowMultiplierDialog(false); // Close multiplier dialog
         setEditingMultiplierType(null); // Reset type
       } else {
-        showNotification(`Failed to update ${type} multiplier`, 'error');
+        showNotification(response.message || `Failed to update ${type} multiplier`, 'error');
       }
     } catch (error) {
       console.error(`Failed to update ${type} multiplier:`, error);

@@ -28,7 +28,7 @@ export default function CustomerManagement() {
       }
 
       const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000' || 'https://api.connectedautocare.com';
-      const endpoint = `${API_BASE_URL}/api/customers`;
+      const endpoint = `${API_BASE_URL}/api/resellers/customers`;
 
       const response = await fetch(endpoint, {
         method: 'GET',
@@ -98,12 +98,9 @@ export default function CustomerManagement() {
           'Content-Type': 'application/json',
         },
       });
-
-      console.log('Admin users response status:', response.status);
       
       if (response.ok) {
         const data = await response.json();
-        console.log('Admin users data:', data);
       } else {
         const errorText = await response.text();
         console.error('Admin users error:', errorText);
@@ -113,16 +110,6 @@ export default function CustomerManagement() {
     }
   };
 
-  // Debug function to check token and user info
-  const debugAuth = () => {
-    console.log('=== AUTH DEBUG ===');
-    console.log('localStorage token:', localStorage.getItem('token'));
-    console.log('All localStorage keys:', Object.keys(localStorage));
-    console.log('All localStorage:', { ...localStorage });
-    console.log('Environment variables:');
-    console.log('VITE_API_URL:', import.meta.env.VITE_API_URL);
-    console.log('=== END DEBUG ===');
-  };
 
   const filteredCustomers = customers.filter(customer =>
     customer.personal_info?.first_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||

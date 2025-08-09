@@ -63,8 +63,7 @@ const PaymentConfirmation = () => {
         payment_method: transaction.payment_method?.method || 'Credit Card',
         product_type: transaction.product_type || 'Protection Plan'
       }
-      
-      console.log('Generating receipt for:', receiptData)
+
       // In production, this would call an API to generate PDF
       alert('Receipt download would be implemented here')
     } catch (err) {

@@ -47,16 +47,13 @@ export const AuthProvider = ({ children }) => {
           setUser(data.user);
           setIsAuthenticated(true);
         } else {
-          console.log('Token verification failed, logging out');
           logout();
         }
       } else {
         // Token is invalid or expired
-        console.log('Token verification failed, logging out');
         logout();
       }
     } catch (error) {
-      console.error('Token verification failed:', error);
       logout();
     } finally {
       setLoading(false);
@@ -100,7 +97,6 @@ export const AuthProvider = ({ children }) => {
       });
 
       const data = await response.json();
-      console.log('Login Response:', data);
 
       if (response.ok && data.token) {
         const { token: authToken, user: userData } = data;
@@ -305,7 +301,6 @@ export const apiCall = async (endpoint, options = {}) => {
     
     // Handle 401 Unauthorized responses (token expired/invalid)
     if (response.status === 401) {
-      console.log('API call received 401, dispatching token expired event');
       // Dispatch a custom event that the TokenExpirationHandler will catch
       window.dispatchEvent(new CustomEvent('tokenExpired', {
         detail: { message: 'Token expired', endpoint }

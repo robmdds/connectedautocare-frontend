@@ -175,36 +175,16 @@ export default function UserManagement() {
             'Content-Type': 'application/json',
           },
         });
-
-        console.log(`${endpoint}: ${response.status} ${response.statusText}`);
         
         if (response.ok) {
           const data = await response.json();
-          console.log(`${endpoint} data:`, data);
         } else {
           const errorText = await response.text();
-          console.log(`${endpoint} error:`, errorText);
         }
       } catch (error) {
         console.error(`${endpoint} failed:`, error);
       }
     }
-  };
-
-  // Debug function to check everything
-  const debugEverything = () => {
-    console.log('=== DEBUG INFO ===');
-    console.log('Current URL:', window.location.href);
-    console.log('localStorage contents:', { ...localStorage });
-    console.log('sessionStorage contents:', { ...sessionStorage });
-    console.log('Environment variables:');
-    console.log('  VITE_API_URL:', import.meta.env.VITE_API_URL);
-    console.log('  MODE:', import.meta.env.MODE);
-    console.log('  DEV:', import.meta.env.DEV);
-    console.log('Current error state:', error);
-    console.log('Current users count:', users.length);
-    console.log('Loading state:', loading);
-    console.log('=== END DEBUG INFO ===');
   };
 
   const filteredUsers = users.filter(user => {

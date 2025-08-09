@@ -32,7 +32,8 @@ import {
   Filter,
   RefreshCw,
   FileText,
-  BarChart3
+  BarChart3,
+  List
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import '../../App.css';
@@ -42,7 +43,7 @@ const Analytics = () => {
   const [analyticsData, setAnalyticsData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [selectedReport, setSelectedReport] = useState('revenue');
+  const [selectedReport, setSelectedReport] = useState('revenue_trends'); // Fixed: Changed from 'revenue' to 'revenue_trends'
   const [dateRange, setDateRange] = useState(null);
   const [exportFormat, setExportFormat] = useState('json');
 
@@ -57,12 +58,20 @@ const Analytics = () => {
     try {
       let url = `${API_BASE_URL}/api/analytics/reports/${selectedReport}`;
       
+      const params = new URLSearchParams();
+      
       if (dateRange?.from && dateRange?.to) {
-        const params = new URLSearchParams({
-          start_date: dateRange.from.toISOString(),
-          end_date: dateRange.to.toISOString()
-        });
-        url += `?${params}`;
+        params.append('start_date', dateRange.from.toISOString());
+        params.append('end_date', dateRange.to.toISOString());
+      }
+      
+      // Add specific parameters for certain report types
+      if (selectedReport === 'revenue_trends') {
+        params.append('breakdown', 'month'); // Default to monthly
+      }
+      
+      if (params.toString()) {
+        url += `?${params.toString()}`;
       }
 
       const response = await fetch(url, {
@@ -75,8 +84,11 @@ const Analytics = () => {
       if (response.ok) {
         const data = await response.json();
         setAnalyticsData(data);
+        setError(''); // Clear any previous errors
       } else {
-        setError('Failed to load analytics data');
+        const errorText = await response.text();
+        console.error('Analytics API error:', response.status, errorText);
+        setError(`Failed to load analytics data (${response.status})`);
       }
     } catch (error) {
       console.error('Analytics fetch error:', error);
@@ -121,38 +133,98 @@ const Analytics = () => {
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
       currency: 'USD'
-    }).format(amount);
+    }).format(amount || 0);
   };
 
   const formatPercentage = (value) => {
-    return `${value.toFixed(1)}%`;
+    return `${(value || 0).toFixed(1)}%`;
   };
 
+  // Fixed: Updated to handle the new API data structure
   const getRevenueChartData = () => {
-    if (!analyticsData?.revenue_by_month) return [];
+    // Handle new API structure
+    if (analyticsData?.data?.revenue_trends && Array.isArray(analyticsData.data.revenue_trends)) {
+      return analyticsData.data.revenue_trends.map(item => ({
+        month: item.period || item.month || item.date,
+        revenue: item.revenue || item.total || 0,
+        transactions: item.transactions || item.count || 0
+      }));
+    }
     
-    return Object.entries(analyticsData.revenue_by_month).map(([month, revenue]) => ({
-      month,
-      revenue,
-      transactions: analyticsData.summary?.transaction_count_by_period?.[month] || 0
-    }));
+    // Fallback for old structure
+    if (analyticsData?.revenue_by_month) {
+      return Object.entries(analyticsData.revenue_by_month).map(([month, revenue]) => ({
+        month,
+        revenue,
+        transactions: analyticsData.summary?.transaction_count_by_period?.[month] || 0
+      }));
+    }
+    
+    return [];
   };
 
+  // Fixed: Updated to handle the new API data structure
   const getProductChartData = () => {
-    if (!analyticsData?.revenue_by_product) return [];
+    // Handle new API structure
+    if (analyticsData?.data?.products && Array.isArray(analyticsData.data.products)) {
+      return analyticsData.data.products.map(item => ({
+        name: (item.name || item.product || '').replace('_', ' ').toUpperCase(),
+        value: item.revenue || item.total || item.value || 0
+      }));
+    }
     
-    return Object.entries(analyticsData.revenue_by_product).map(([product, revenue]) => ({
-      name: product.replace('_', ' ').toUpperCase(),
-      value: revenue
-    }));
+    // Fallback for old structure
+    if (analyticsData?.revenue_by_product) {
+      return Object.entries(analyticsData.revenue_by_product).map(([product, revenue]) => ({
+        name: product.replace('_', ' ').toUpperCase(),
+        value: revenue
+      }));
+    }
+    
+    return [];
+  };
+
+  // Fixed: Helper function to safely get summary data
+  const getSummaryData = () => {
+    // Try to get from new API structure
+    if (analyticsData?.data?.summary) {
+      return analyticsData.data.summary;
+    }
+    
+    // Fallback to old structure
+    if (analyticsData?.summary) {
+      return analyticsData.summary;
+    }
+    
+    // Generate summary from available data if possible
+    const chartData = getRevenueChartData();
+    if (chartData.length > 0) {
+      const totalRevenue = chartData.reduce((sum, item) => sum + (item.revenue || 0), 0);
+      const totalTransactions = chartData.reduce((sum, item) => sum + (item.transactions || 0), 0);
+      
+      return {
+        total_revenue: totalRevenue,
+        total_transactions: totalTransactions,
+        average_transaction_value: totalTransactions > 0 ? totalRevenue / totalTransactions : 0,
+        growth_rate: 0, // Cannot calculate without historical data
+        total_customers: 0,
+        retention_rate: 0,
+        average_lifetime_value: 0
+      };
+    }
+    
+    return null;
   };
 
   const COLORS = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#06B6D4'];
 
   const reportTypes = [
-    { value: 'revenue', label: 'Revenue Report', icon: DollarSign },
-    { value: 'customer', label: 'Customer Report', icon: Users },
-    { value: 'product', label: 'Product Report', icon: ShoppingCart },
+    { value: 'revenue_trends', label: 'Revenue Trends', icon: DollarSign },
+    { value: 'product_performance', label: 'Product Performance', icon: ShoppingCart },
+    { value: 'customer_analysis', label: 'Customer Analysis', icon: Users },
+    { value: 'conversion_rates', label: 'Conversion Rates', icon: TrendingUp },
+    { value: 'sales_summary', label: 'Sales Summary', icon: FileText },
+    { value: 'transaction_details', label: 'Transaction Details', icon: List },
     ...(isAdmin ? [{ value: 'reseller', label: 'Reseller Report', icon: BarChart3 }] : [])
   ];
 
@@ -166,6 +238,15 @@ const Analytics = () => {
       </div>
     );
   }
+
+  // Helper function to determine if we should show empty state vs error
+  const shouldShowEmptyState = () => {
+    return !error && analyticsData && (
+      (analyticsData.data?.revenue_trends && analyticsData.data.revenue_trends.length === 0) ||
+      (analyticsData.data?.products && analyticsData.data.products.length === 0) ||
+      (!analyticsData.data?.revenue_trends && !analyticsData.data?.products && !analyticsData.summary)
+    );
+  };
 
   return (
     <div className="space-y-6">
@@ -262,6 +343,14 @@ const Analytics = () => {
             </Button>
           </div>
         </div>
+      ) : shouldShowEmptyState() ? (
+        <div className="flex items-center justify-center h-64">
+          <div className="text-center">
+            <BarChart3 className="mx-auto h-12 w-12 text-gray-400 mb-4" />
+            <p className="text-gray-600">No data available for the selected period and report type.</p>
+            <p className="text-sm text-gray-500 mt-2">Try selecting a different date range or report type.</p>
+          </div>
+        </div>
       ) : (
         <>
           {/* Summary Cards */}
@@ -271,87 +360,90 @@ const Analytics = () => {
             transition={{ duration: 0.5, delay: 0.2 }}
             className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6"
           >
-            {analyticsData?.summary && (
-              <>
-                <Card>
-                  <CardContent className="p-6">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-sm font-medium text-gray-600">Total Revenue</p>
-                        <p className="text-2xl font-bold text-gray-900">
-                          {formatCurrency(analyticsData.summary.total_revenue || 0)}
-                        </p>
-                        <p className="text-sm text-green-600 mt-1">
-                          {formatPercentage(analyticsData.summary.growth_rate || 0)} growth
-                        </p>
-                      </div>
-                      <DollarSign className="text-green-600" size={24} />
-                    </div>
-                  </CardContent>
-                </Card>
-
-                <Card>
-                  <CardContent className="p-6">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-sm font-medium text-gray-600">Transactions</p>
-                        <p className="text-2xl font-bold text-gray-900">
-                          {analyticsData.summary.total_transactions || 0}
-                        </p>
-                        <p className="text-sm text-blue-600 mt-1">
-                          {formatCurrency(analyticsData.summary.average_transaction_value || 0)} avg
-                        </p>
-                      </div>
-                      <ShoppingCart className="text-blue-600" size={24} />
-                    </div>
-                  </CardContent>
-                </Card>
-
-                {selectedReport === 'customer' && (
-                  <>
-                    <Card>
-                      <CardContent className="p-6">
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <p className="text-sm font-medium text-gray-600">Total Customers</p>
-                            <p className="text-2xl font-bold text-gray-900">
-                              {analyticsData.summary.total_customers || 0}
-                            </p>
-                            <p className="text-sm text-purple-600 mt-1">
-                              {formatPercentage(analyticsData.summary.retention_rate || 0)} retention
-                            </p>
-                          </div>
-                          <Users className="text-purple-600" size={24} />
+            {(() => {
+              const summaryData = getSummaryData();
+              return summaryData && (
+                <>
+                  <Card>
+                    <CardContent className="p-6">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-sm font-medium text-gray-600">Total Revenue</p>
+                          <p className="text-2xl font-bold text-gray-900">
+                            {formatCurrency(summaryData.total_revenue)}
+                          </p>
+                          <p className="text-sm text-green-600 mt-1">
+                            {formatPercentage(summaryData.growth_rate)} growth
+                          </p>
                         </div>
-                      </CardContent>
-                    </Card>
+                        <DollarSign className="text-green-600" size={24} />
+                      </div>
+                    </CardContent>
+                  </Card>
 
-                    <Card>
-                      <CardContent className="p-6">
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <p className="text-sm font-medium text-gray-600">Avg LTV</p>
-                            <p className="text-2xl font-bold text-gray-900">
-                              {formatCurrency(analyticsData.summary.average_lifetime_value || 0)}
-                            </p>
-                            <p className="text-sm text-orange-600 mt-1">
-                              Per customer
-                            </p>
-                          </div>
-                          <TrendingUp className="text-orange-600" size={24} />
+                  <Card>
+                    <CardContent className="p-6">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-sm font-medium text-gray-600">Transactions</p>
+                          <p className="text-2xl font-bold text-gray-900">
+                            {summaryData.total_transactions || 0}
+                          </p>
+                          <p className="text-sm text-blue-600 mt-1">
+                            {formatCurrency(summaryData.average_transaction_value)} avg
+                          </p>
                         </div>
-                      </CardContent>
-                    </Card>
-                  </>
-                )}
-              </>
-            )}
+                        <ShoppingCart className="text-blue-600" size={24} />
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  {selectedReport === 'customer_analysis' && (
+                    <>
+                      <Card>
+                        <CardContent className="p-6">
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <p className="text-sm font-medium text-gray-600">Total Customers</p>
+                              <p className="text-2xl font-bold text-gray-900">
+                                {summaryData.total_customers || 0}
+                              </p>
+                              <p className="text-sm text-purple-600 mt-1">
+                                {formatPercentage(summaryData.retention_rate)} retention
+                              </p>
+                            </div>
+                            <Users className="text-purple-600" size={24} />
+                          </div>
+                        </CardContent>
+                      </Card>
+
+                      <Card>
+                        <CardContent className="p-6">
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <p className="text-sm font-medium text-gray-600">Avg LTV</p>
+                              <p className="text-2xl font-bold text-gray-900">
+                                {formatCurrency(summaryData.average_lifetime_value)}
+                              </p>
+                              <p className="text-sm text-orange-600 mt-1">
+                                Per customer
+                              </p>
+                            </div>
+                            <TrendingUp className="text-orange-600" size={24} />
+                          </div>
+                        </CardContent>
+                      </Card>
+                    </>
+                  )}
+                </>
+              );
+            })()}
           </motion.div>
 
           {/* Charts */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Revenue Trend */}
-            {selectedReport === 'revenue' && (
+            {selectedReport === 'revenue_trends' && getRevenueChartData().length > 0 && (
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -390,102 +482,100 @@ const Analytics = () => {
             )}
 
             {/* Product Distribution */}
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5, delay: 0.4 }}
-            >
-              <Card>
-                <CardHeader>
-                  <CardTitle>
-                    {selectedReport === 'revenue' ? 'Revenue by Product' : 
-                     selectedReport === 'customer' ? 'Customer Segments' : 'Product Performance'}
-                  </CardTitle>
-                  <CardDescription>Distribution breakdown</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <ResponsiveContainer width="100%" height={300}>
-                    <PieChart>
-                      <Pie
-                        data={getProductChartData()}
-                        cx="50%"
-                        cy="50%"
-                        labelLine={false}
-                        label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
-                        outerRadius={80}
-                        fill="#8884d8"
-                        dataKey="value"
-                      >
-                        {getProductChartData().map((entry, index) => (
-                          <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                        ))}
-                      </Pie>
-                      <Tooltip formatter={(value) => formatCurrency(value)} />
-                    </PieChart>
-                  </ResponsiveContainer>
-                </CardContent>
-              </Card>
-            </motion.div>
+            {getProductChartData().length > 0 && (
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5, delay: 0.4 }}
+              >
+                <Card>
+                  <CardHeader>
+                    <CardTitle>
+                      {selectedReport === 'revenue_trends' ? 'Revenue by Product' : 
+                       selectedReport === 'customer_analysis' ? 'Customer Segments' : 'Product Performance'}
+                    </CardTitle>
+                    <CardDescription>Distribution breakdown</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <ResponsiveContainer width="100%" height={300}>
+                      <PieChart>
+                        <Pie
+                          data={getProductChartData()}
+                          cx="50%"
+                          cy="50%"
+                          labelLine={false}
+                          label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                          outerRadius={80}
+                          fill="#8884d8"
+                          dataKey="value"
+                        >
+                          {getProductChartData().map((entry, index) => (
+                            <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                          ))}
+                        </Pie>
+                        <Tooltip formatter={(value) => formatCurrency(value)} />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  </CardContent>
+                </Card>
+              </motion.div>
+            )}
           </div>
 
           {/* Detailed Table */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.5 }}
-          >
-            <Card>
-              <CardHeader>
-                <CardTitle>Detailed Breakdown</CardTitle>
-                <CardDescription>
-                  {selectedReport === 'revenue' ? 'Revenue metrics by period' :
-                   selectedReport === 'customer' ? 'Customer analytics' :
-                   selectedReport === 'product' ? 'Product performance metrics' :
-                   'Reseller performance data'}
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="overflow-x-auto">
-                  <table className="w-full text-sm">
-                    <thead>
-                      <tr className="border-b">
-                        <th className="text-left p-2">Period/Item</th>
-                        <th className="text-right p-2">Revenue</th>
-                        <th className="text-right p-2">Count</th>
-                        <th className="text-right p-2">Average</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {selectedReport === 'revenue' && analyticsData?.revenue_by_month && 
-                        Object.entries(analyticsData.revenue_by_month).map(([period, revenue]) => (
-                          <tr key={period} className="border-b">
-                            <td className="p-2 font-medium">{period}</td>
-                            <td className="p-2 text-right">{formatCurrency(revenue)}</td>
+          {(getRevenueChartData().length > 0 || getProductChartData().length > 0) && (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: 0.5 }}
+            >
+              <Card>
+                <CardHeader>
+                  <CardTitle>Detailed Breakdown</CardTitle>
+                  <CardDescription>
+                    {selectedReport === 'revenue_trends' ? 'Revenue metrics by period' :
+                     selectedReport === 'customer_analysis' ? 'Customer analytics' :
+                     selectedReport === 'product_performance' ? 'Product performance metrics' :
+                     'Analytics data breakdown'}
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="border-b">
+                          <th className="text-left p-2">Period/Item</th>
+                          <th className="text-right p-2">Revenue</th>
+                          <th className="text-right p-2">Count</th>
+                          <th className="text-right p-2">Average</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {selectedReport === 'revenue_trends' && getRevenueChartData().map((item, index) => (
+                          <tr key={index} className="border-b">
+                            <td className="p-2 font-medium">{item.month}</td>
+                            <td className="p-2 text-right">{formatCurrency(item.revenue)}</td>
+                            <td className="p-2 text-right">{item.transactions}</td>
                             <td className="p-2 text-right">
-                              {analyticsData.summary?.transaction_count_by_period?.[period] || 0}
-                            </td>
-                            <td className="p-2 text-right">
-                              {formatCurrency(revenue / Math.max(analyticsData.summary?.transaction_count_by_period?.[period] || 1, 1))}
+                              {formatCurrency(item.transactions > 0 ? item.revenue / item.transactions : 0)}
                             </td>
                           </tr>
-                        ))
-                      }
-                      {selectedReport === 'product' && analyticsData?.revenue_by_product &&
-                        Object.entries(analyticsData.revenue_by_product).map(([product, revenue]) => (
-                          <tr key={product} className="border-b">
-                            <td className="p-2 font-medium">{product.replace('_', ' ').toUpperCase()}</td>
-                            <td className="p-2 text-right">{formatCurrency(revenue)}</td>
+                        ))}
+                        {selectedReport === 'product_performance' && getProductChartData().map((item, index) => (
+                          <tr key={index} className="border-b">
+                            <td className="p-2 font-medium">{item.name}</td>
+                            <td className="p-2 text-right">{formatCurrency(item.value)}</td>
                             <td className="p-2 text-right">-</td>
                             <td className="p-2 text-right">-</td>
                           </tr>
-                        ))
-                      }
-                    </tbody>
-                  </table>
-                </div>
-              </CardContent>
-            </Card>
-          </motion.div>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </CardContent>
+              </Card>
+            </motion.div>
+          )}
         </>
       )}
     </div>
@@ -493,4 +583,3 @@ const Analytics = () => {
 };
 
 export default Analytics;
-

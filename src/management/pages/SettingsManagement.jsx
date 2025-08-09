@@ -210,6 +210,18 @@ export default function SettingsManagement() {
         throw new Error('No authentication token found');
       }
 
+      // Clean the settings data before sending
+      const cleanedSettings = JSON.parse(JSON.stringify(settings));
+      
+      // Process all numeric fields to ensure 0 values are preserved
+      Object.keys(cleanedSettings).forEach(category => {
+        Object.keys(cleanedSettings[category]).forEach(key => {
+          if (cleanedSettings[category][key] === '') {
+            cleanedSettings[category][key] = 0;
+          }
+        });
+      });
+
       const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
       const response = await fetch(`${API_BASE_URL}/api/admin/settings`, {
         method: 'PUT',
@@ -217,7 +229,7 @@ export default function SettingsManagement() {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(settings),
+        body: JSON.stringify(cleanedSettings),
       });
 
       if (!response.ok) {

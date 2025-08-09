@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../management/lib/auth';
 
-
 const ProtectedRoute = ({ children }) => {
   const { isAuthenticated, loading, logout } = useAuth();
   const location = useLocation();
@@ -11,11 +10,9 @@ const ProtectedRoute = ({ children }) => {
   useEffect(() => {
     const validateAccess = () => {
       setIsChecking(true);
-      
       // Check if token exists
       const token = localStorage.getItem('token');
       if (!token) {
-        console.log('No token found, will redirect to login');
         setIsChecking(false);
         return;
       }
@@ -23,10 +20,8 @@ const ProtectedRoute = ({ children }) => {
       // If we reach here and isAuthenticated is false after loading is done,
       // it means the token verification failed
       if (!loading && !isAuthenticated) {
-        console.log('Token verification failed, logging out');
         logout();
       }
-
       setIsChecking(false);
     };
 
@@ -57,9 +52,9 @@ const ProtectedRoute = ({ children }) => {
   return children;
 };
 
-// Enhanced Public Route Component
+// Enhanced Public Route Component with Reseller-specific redirect
 const PublicRoute = ({ children }) => {
-  const { isAuthenticated, loading } = useAuth();
+  const { isAuthenticated, loading, user } = useAuth();
   const location = useLocation();
 
   if (loading) {
@@ -73,11 +68,28 @@ const PublicRoute = ({ children }) => {
     );
   }
 
-  // If authenticated, redirect to dashboard or the return URL
+  // If authenticated, redirect based on user role and return URL
   if (isAuthenticated) {
     const urlParams = new URLSearchParams(location.search);
-    const returnUrl = urlParams.get('returnUrl') || '/dashboard';
-    return <Navigate to={returnUrl} replace />;
+    const returnUrl = urlParams.get('returnUrl');
+    
+    // If there's a specific return URL, use it
+    if (returnUrl) {
+      return <Navigate to={returnUrl} replace />;
+    }
+    
+    // Default redirects based on user role
+    let defaultRedirect = '/dashboard'; // Default for most users
+    
+    if (user?.role === 'wholesale_reseller') {
+      defaultRedirect = '/quote'; // Resellers go to quote page
+    } else if (user?.role === 'customer') {
+      defaultRedirect = '/dashboard'; // Customers go to dashboard
+    } else if (user?.role === 'admin') {
+      defaultRedirect = '/dashboard'; // Admins go to dashboard
+    }
+    
+    return <Navigate to={defaultRedirect} replace />;
   }
 
   return children;
@@ -90,7 +102,6 @@ const TokenExpirationHandler = ({ children }) => {
   useEffect(() => {
     const handleTokenExpiration = (event) => {
       if (event.detail && event.detail.message === 'Token expired') {
-        console.log('Token expired event received, logging out');
         logout();
       }
     };

@@ -49,7 +49,7 @@ const Dashboard = () => {
     try {
       // Use different endpoints based on user role
       const endpoint = isCustomer 
-        ? `${API_BASE_URL}/api/analytics/customer-dashboard`
+        ? `${API_BASE_URL}/api/customers/dashboard`
         : `${API_BASE_URL}/api/analytics/dashboard`;
 
       const response = await fetch(endpoint, {

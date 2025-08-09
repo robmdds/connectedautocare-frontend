@@ -63,7 +63,6 @@ export default function EnhancedProductManagement() {
   // FIXED: Improved system settings loading with better error handling
   const loadSystemSettings = async () => {
     try {
-      console.log('Loading system settings...')
       const response = await apiCall('/api/admin/system-settings')
       
       // Handle array response format
@@ -71,8 +70,6 @@ export default function EnhancedProductManagement() {
       if (Array.isArray(response) && response.length >= 1) {
         actualResponse = response[0]
       }
-
-      console.log('System settings response:', actualResponse)
 
       if (actualResponse && actualResponse.success && actualResponse.data) {
         const settingsData = {
@@ -83,8 +80,6 @@ export default function EnhancedProductManagement() {
           database_driven: actualResponse.data.database_driven ?? true,
           timestamp: actualResponse.data.timestamp || new Date().toISOString()
         }
-        
-        console.log('Setting system settings:', settingsData)
         setSystemSettings(settingsData)
         return settingsData
       } else {
@@ -102,8 +97,6 @@ export default function EnhancedProductManagement() {
         database_driven: false,
         timestamp: new Date().toISOString()
       }
-      
-      console.log('Using fallback settings:', fallbackSettings)
       setSystemSettings(fallbackSettings)
       throw error // Re-throw to be caught by Promise.allSettled
     }
@@ -117,7 +110,6 @@ export default function EnhancedProductManagement() {
   // FIXED: Simplified products loading that doesn't interfere with system settings
   const loadProducts = async () => {
     try {
-      console.log('Loading products...')
       const response = await apiCall('/api/admin/products')
       
       let actualResponse = response
@@ -129,8 +121,6 @@ export default function EnhancedProductManagement() {
       if (actualResponse && actualResponse.success && actualResponse.data) {
         responseData = actualResponse.data
       }
-
-      console.log('Products response data:', responseData)
 
       if (responseData.products && Array.isArray(responseData.products)) {
         const heroProductsObj = {}
@@ -158,13 +148,11 @@ export default function EnhancedProductManagement() {
           }
         })
         
-        console.log('Setting hero products:', heroProductsObj)
         setHeroProducts(heroProductsObj)
         
         // FIXED: Only update system settings from products response if not already loaded
         // and if the response contains system settings
         if (responseData.system_settings && !systemSettings) {
-          console.log('Updating system settings from products response')
           setSystemSettings(responseData.system_settings)
         }
       }
@@ -243,7 +231,7 @@ export default function EnhancedProductManagement() {
       
       setEditingProduct(null)
       setShowCreateDialog(false)
-    } catch (error) {
+    } catch (error) { 
       console.error('Failed to save product:', error)
       showNotification('Failed to save product', 'error')
     }
@@ -790,7 +778,6 @@ function PricingForm({ product, systemSettings, onSave, onCancel }) {
   // Function to calculate preview using system settings
   const calculatePreview = async (term, customerType, price) => {
     if (!systemSettings) {
-      console.log('No system settings available for preview calculation')
       return null
     }
 
@@ -876,7 +863,6 @@ function PricingForm({ product, systemSettings, onSave, onCancel }) {
     }))
     
     if (!systemSettings) {
-      console.log('No system settings available for base price update')
       return
     }
     

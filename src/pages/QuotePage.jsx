@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { useLocation, useSearchParams } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { Calculator, Car, Home, Shield, DollarSign, CheckCircle, AlertCircle, Loader, Search, CreditCard, FileText, Lock } from 'lucide-react'
+import { Calculator, Car, Home, Shield, DollarSign, CheckCircle, AlertCircle, Loader, Search, CreditCard, FileText, Lock, Share2, Copy, UserCheck, Building2, Link2, Mail, Phone, User } from 'lucide-react'
 import { Button } from '../components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card'
 import { Input } from '../components/ui/input'
@@ -10,13 +10,18 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs'
 import { Badge } from '../components/ui/badge'
 import { Separator } from '../components/ui/separator'
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '../components/ui/dialog'
+import { Textarea } from '../components/ui/textarea'
+import { Switch } from '../components/ui/switch'
+import { MessageCircle } from 'lucide-react'
+import { useAuth } from '../management/lib/auth'
 import { heroAPI, vscAPI, formatCurrency, validateQuoteData, handleAPIError } from '../lib/api'
-
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+import CustomerInfoForm from "../components/CustomerInfoForm.jsx";
 
 const QuotePage = () => {
   const location = useLocation()
   const [searchParams] = useSearchParams()
+  const { user, isAuthenticated, isReseller, isCustomer, token, API_BASE_URL } = useAuth()
   const [activeTab, setActiveTab] = useState('hero')
   const [loading, setLoading] = useState(false)
   const [quote, setQuote] = useState(null)
@@ -26,19 +31,31 @@ const QuotePage = () => {
   const [vinInfo, setVinInfo] = useState(null)
   const [eligibilityCheck, setEligibilityCheck] = useState(null)
 
-  const [heroProducts, setHeroProducts] = useState([])
-  const [heroProductsLoading, setHeroProductsLoading] = useState(true)
-  // Payment states
-  const [showPayment, setShowPayment] = useState(false)
-  const [paymentLoading, setPaymentLoading] = useState(false)
-  const [paymentMethod, setPaymentMethod] = useState('credit_card')
-  const [paymentResult, setPaymentResult] = useState(null)
+  // Determine user type based on auth context
+  const userType = isAuthenticated ? (isReseller ? 'reseller' : 'customer') : 'customer'
+
+  // Reseller-specific states
+  const [shareableQuote, setShareableQuote] = useState(null)
+  const [shareLoading, setShareLoading] = useState(false)
   const [customerInfo, setCustomerInfo] = useState({
     first_name: '',
     last_name: '',
     email: '',
-    phone: ''
+    phone: '',
+    company: ''
   })
+  const [quoteNotes, setQuoteNotes] = useState('')
+  const [shareDialogOpen, setShareDialogOpen] = useState(false)
+  const [copiedToClipboard, setCopiedToClipboard] = useState(false)
+
+  const [heroProducts, setHeroProducts] = useState([])
+  const [heroProductsLoading, setHeroProductsLoading] = useState(true)
+  
+  // Payment states (for direct customers)
+  const [showPayment, setShowPayment] = useState(false)
+  const [paymentLoading, setPaymentLoading] = useState(false)
+  const [paymentMethod, setPaymentMethod] = useState('credit_card')
+  const [paymentResult, setPaymentResult] = useState(null)
   
   // Billing info states
   const [billingInfo, setBillingInfo] = useState({
@@ -49,15 +66,15 @@ const QuotePage = () => {
     country: 'US'
   })
 
-  // Hero Products Form State
+  // Hero Products Form State - set customer_type based on user role
   const [heroForm, setHeroForm] = useState({
     product_type: '',
     term_years: '',
     coverage_limit: '',
-    customer_type: 'retail'
+    customer_type: isReseller ? 'wholesale' : 'retail'
   })
 
-  // Enhanced VSC Form State with VIN
+  // Enhanced VSC Form State with VIN - set customer_type based on user role
   const [vscForm, setVscForm] = useState({
     vin: '',
     make: '',
@@ -66,13 +83,20 @@ const QuotePage = () => {
     mileage: '',
     coverage_level: '',
     term_months: '',
-    customer_type: 'retail',
+    customer_type: isReseller ? 'wholesale' : 'retail',
     auto_populated: false
   })
 
-  // Fixed useEffect with proper memoization and cleanup
+  // Update customer_type when user authentication changes
   useEffect(() => {
-    let isMounted = true; // Flag to prevent state updates if component unmounts
+    const customerType = isReseller ? 'wholesale' : 'retail'
+    setHeroForm(prev => ({ ...prev, customer_type: customerType }))
+    setVscForm(prev => ({ ...prev, customer_type: customerType }))
+  }, [isReseller])
+
+  // Hero products loading logic (same as before)
+  useEffect(() => {
+    let isMounted = true;
 
     const fetchHeroProducts = async () => {
       try {
@@ -80,11 +104,9 @@ const QuotePage = () => {
         const response = await fetch(`${API_BASE_URL}/api/hero/products`);
         const result = await response.json();
         
-        // Only update state if component is still mounted
         if (!isMounted) return;
         
         if (result.success && result.products) {
-          // Map backend product codes to the exact keys expected by HeroRatingService
           const productCodeToServiceKey = {
             'HOME_PROTECTION_PLAN': 'home_protection',
             'COMPREHENSIVE_AUTO_PROTECTION': 'comprehensive_auto_protection',
@@ -100,7 +122,6 @@ const QuotePage = () => {
             'HERO_LEVEL_PROTECTION_FOR_YOUR_HOME': 'hero_level_protection_home'
           };
           
-          // Map product codes to UI-friendly format
           const productMap = {
             'HOME_PROTECTION_PLAN': { label: 'Home Protection Plan', icon: Home },
             'COMPREHENSIVE_AUTO_PROTECTION': { label: 'Comprehensive Auto Protection', icon: Car },
@@ -121,7 +142,7 @@ const QuotePage = () => {
             const coverageLimit = product.product_code.includes('_1000') ? 1000 : 500;
             
             return {
-              value: serviceKey, // Use unique service keys
+              value: serviceKey,
               label: productMap[product.product_code]?.label || product.product_name,
               icon: productMap[product.product_code]?.icon || Shield,
               basePrice: product.base_price,
@@ -133,8 +154,6 @@ const QuotePage = () => {
           
           setHeroProducts(mappedProducts);
         } else {
-          console.warn('Invalid API response structure:', result);
-          // Fallback to hard-coded list with unique service keys
           setHeroProducts([
             { value: 'home_protection', label: 'Home Protection Plan', icon: Home, coverageLimit: 500 },
             { value: 'comprehensive_auto_protection', label: 'Comprehensive Auto Protection', icon: Car, coverageLimit: 500 },
@@ -154,20 +173,10 @@ const QuotePage = () => {
         console.error('Failed to fetch hero products:', err);
         if (!isMounted) return;
         
-        // Fallback to hard-coded list with unique service keys
         setHeroProducts([
           { value: 'home_protection', label: 'Home Protection Plan', icon: Home, coverageLimit: 500 },
           { value: 'comprehensive_auto_protection', label: 'Comprehensive Auto Protection', icon: Car, coverageLimit: 500 },
-          { value: 'home_deductible_reimbursement', label: 'Home Deductible Reimbursement', icon: Shield, coverageLimit: 500 },
-          { value: 'auto_advantage_deductible_reimbursement_500', label: 'Auto Advantage DDR ($500)', icon: Car, coverageLimit: 500 },
-          { value: 'auto_advantage_deductible_reimbursement_1000', label: 'Auto Advantage DDR ($1000)', icon: Car, coverageLimit: 1000 },
-          { value: 'all_vehicle_deductible_reimbursement_500', label: 'All Vehicle DDR ($500)', icon: Car, coverageLimit: 500 },
-          { value: 'all_vehicle_deductible_reimbursement_1000', label: 'All Vehicle DDR ($1000)', icon: Car, coverageLimit: 1000 },
-          { value: 'auto_rv_deductible_reimbursement_500', label: 'Auto & RV DDR ($500)', icon: Car, coverageLimit: 500 },
-          { value: 'auto_rv_deductible_reimbursement_1000', label: 'Auto & RV DDR ($1000)', icon: Car, coverageLimit: 1000 },
-          { value: 'multi_vehicle_deductible_reimbursement_500', label: 'Multi Vehicle DDR ($500)', icon: Car, coverageLimit: 500 },
-          { value: 'multi_vehicle_deductible_reimbursement_1000', label: 'Multi Vehicle DDR ($1000)', icon: Car, coverageLimit: 1000 },
-          { value: 'hero_level_protection_home', label: 'Hero Level Protection Home', icon: Shield, coverageLimit: 500 }
+          { value: 'home_deductible_reimbursement', label: 'Home Deductible Reimbursement', icon: Shield, coverageLimit: 500 }
         ]);
       } finally {
         if (isMounted) {
@@ -176,16 +185,14 @@ const QuotePage = () => {
       }
     };
 
-    // Only fetch if not already loaded
     if (heroProducts.length === 0 && heroProductsLoading) {
       fetchHeroProducts();
     }
 
-    // Cleanup function
     return () => {
       isMounted = false;
     };
-  }, []); // Empty dependency array - only run once on mount
+  }, []);
 
   // Handle URL parameters on component mount
   useEffect(() => {
@@ -216,6 +223,449 @@ const QuotePage = () => {
     'Plymouth', 'Pontiac', 'Saturn', 'BMW', 'Mercedes-Benz', 'Audi', 'Cadillac', 'Lincoln',
     'Volkswagen', 'Volvo', 'Acura', 'Infiniti'
   ]
+
+    const saveTransactionToDatabase = async (transactionData) => {
+
+        const response = await fetch(`${API_BASE_URL}/api/payments/process`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                action: 'save_transaction',
+                transaction_data: transactionData
+            })
+        });
+
+        const result = await response.json();
+
+        if (!result.success) {
+            throw new Error(result.error || 'Failed to save transaction data');
+        }
+
+        return result.data;
+    }
+
+    const processHelcimPayment = async (amount) => {
+        return new Promise((resolve, reject) => {
+            try {
+
+                if (typeof window.helcimProcess !== 'function') {
+                    throw new Error('HelcimJS not loaded. Please refresh the page and try again.');
+                }
+
+                const formId = 'helcimPaymentForm';
+                const existingForm = document.getElementById(formId);
+                if (existingForm) {
+                    existingForm.remove();
+                }
+
+                const form = document.createElement('form');
+                form.id = formId;
+                form.name = 'helcimForm';
+                form.style.display = 'none';
+                form.method = 'POST';
+                form.action = 'javascript:void(0);'; // Prevent submission to any URL
+
+                // Prevent form submission
+                form.addEventListener('submit', (e) => {
+                    e.preventDefault();
+                    e.stopPropagation(); // Stop event bubbling
+                    return false;
+                });
+
+                let resultsDiv = document.getElementById('helcimResults');
+                if (!resultsDiv) {
+                    resultsDiv = document.createElement('div');
+                    resultsDiv.id = 'helcimResults';
+                    resultsDiv.style.display = 'none';
+                    document.body.appendChild(resultsDiv);
+                }
+
+                const createHiddenInput = (name, value) => {
+                    const input = document.createElement('input');
+                    input.type = 'hidden';
+                    input.id = name;
+                    input.name = name;
+                    input.value = value || '';
+                    return input;
+                };
+
+                // Form fields (unchanged)
+                form.appendChild(createHiddenInput('token', import.meta.env.VITE_HELCIM_TOKEN || 'de2a5120a337b055a082b5'));
+                form.appendChild(createHiddenInput('amount', amount.toFixed(2)));
+                form.appendChild(createHiddenInput('currency', 'USD'));
+                form.appendChild(createHiddenInput('test', import.meta.env.VITE_HELCIM_TEST_MODE || '1'));
+                form.appendChild(createHiddenInput('dontSubmit', '1')); // Signal HelcimJS to avoid submission
+                form.appendChild(createHiddenInput('orderNumber', `INV-${quote.quote_id || Date.now()}`));
+                form.appendChild(createHiddenInput('customerCode', `CUST-${Date.now()}`));
+                form.appendChild(createHiddenInput('comments', `${activeTab === 'vsc' ? 'Vehicle Service Contract' : 'Hero Product'} - ConnectedAutoCare`));
+                form.appendChild(createHiddenInput('billing_contactName', `${customerInfo.first_name} ${customerInfo.last_name}`));
+                form.appendChild(createHiddenInput('billing_street1', billingInfo.address));
+                form.appendChild(createHiddenInput('billing_city', billingInfo.city));
+                form.appendChild(createHiddenInput('billing_province', billingInfo.state));
+                form.appendChild(createHiddenInput('billing_postalCode', billingInfo.zip_code));
+                form.appendChild(createHiddenInput('billing_country', billingInfo.country));
+                form.appendChild(createHiddenInput('billing_email', customerInfo.email));
+                form.appendChild(createHiddenInput('billing_phone', customerInfo.phone || ''));
+                form.appendChild(createHiddenInput('cardNumber', ''));
+                form.appendChild(createHiddenInput('cardExpiry', ''));
+                form.appendChild(createHiddenInput('cardCVV', ''));
+                form.appendChild(createHiddenInput('cardHolderName', `${customerInfo.first_name} ${customerInfo.last_name}`));
+                form.appendChild(createHiddenInput('cardHolderAddress', billingInfo.address)); // Map to AVS field
+                form.appendChild(createHiddenInput('cardHolderPostalCode', billingInfo.zip_code)); // Map to AVS field
+
+                document.body.appendChild(form);
+                // Create a payment collection form/modal for card details
+                const createPaymentModal = () => {
+                    const modal = document.createElement('div');
+                    modal.id = 'helcimPaymentModal';
+                    modal.style.cssText = `
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.6);
+            z-index: 10000;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+          `;
+
+                    const modalContent = document.createElement('div');
+                    modalContent.style.cssText = `
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            max-width: 500px;
+            width: 90%;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+          `;
+
+                    modalContent.innerHTML = `
+            <h3 style="margin-bottom: 20px; text-align: center; color: #333;">Secure Payment</h3>
+            <p style="margin-bottom: 20px; color: #666; text-align: center;">
+              Amount: <strong>${amount.toFixed(2)}</strong>
+            </p>
+            
+            <div style="margin-bottom: 15px;">
+              <label style="display: block; margin-bottom: 5px; font-weight: bold;">Card Number *</label>
+              <input type="text" id="modalCardNumber" placeholder="1234 5678 9012 3456" 
+                     style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 16px;" 
+                     maxlength="19">
+            </div>
+            
+            <div style="display: flex; gap: 15px; margin-bottom: 15px;">
+              <div style="flex: 1;">
+                <label style="display: block; margin-bottom: 5px; font-weight: bold;">Expiry Month *</label>
+                <select id="modalCardExpiryMonth" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px;">
+                  <option value="">MM</option>
+                  ${Array.from({length: 12}, (_, i) => `<option value="${String(i + 1).padStart(2, '0')}">${String(i + 1).padStart(2, '0')}</option>`).join('')}
+                </select>
+              </div>
+              <div style="flex: 1;">
+                <label style="display: block; margin-bottom: 5px; font-weight: bold;">Expiry Year *</label>
+                <select id="modalCardExpiryYear" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px;">
+                  <option value="">YYYY</option>
+                  ${Array.from({length: 10}, (_, i) => {
+                        const year = new Date().getFullYear() + i;
+                        return `<option value="${year}">${year}</option>`;
+                    }).join('')}
+                </select>
+              </div>
+              <div style="flex: 1;">
+                <label style="display: block; margin-bottom: 5px; font-weight: bold;">CVV *</label>
+                <input type="text" id="modalCardCVV" placeholder="123" 
+                       style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px;" 
+                       maxlength="4">
+              </div>
+            </div>
+            
+            <div id="modalError" style="color: red; margin-bottom: 15px; display: none;"></div>
+            
+            <div style="display: flex; gap: 10px; justify-content: center;">
+              <button type="button" id="modalProcessBtn" 
+                      style="background: #007bff; color: white; border: none; padding: 12px 24px; border-radius: 4px; cursor: pointer; font-size: 16px;">
+                Process Payment
+              </button>
+              <button type="button" id="modalCancelBtn" 
+                      style="background: #dc3545; color: white; border: none; padding: 12px 24px; border-radius: 4px; cursor: pointer; font-size: 16px;">
+                Cancel
+              </button>
+            </div>
+            
+            <div style="text-align: center; margin-top: 15px; font-size: 12px; color: #666;">
+              <div style="display: flex; align-items: center; justify-content: center; gap: 5px;">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M18,8A6,6 0 0,0 12,2A6,6 0 0,0 6,8H4V20H20V8H18M12,4A4,4 0 0,1 16,8H8A4,4 0 0,1 12,4M12,17A2,2 0 0,1 10,15A2,2 0 0,1 12,13A2,2 0 0,1 14,15A2,2 0 0,1 12,17Z" />
+                </svg>
+                Your payment is secure and encrypted
+              </div>
+            </div>
+          `;
+
+                    modal.appendChild(modalContent);
+                    document.body.appendChild(modal);
+
+                    // Format card number input
+                    document.getElementById('modalCardNumber').addEventListener('input', (e) => {
+                        let value = e.target.value.replace(/\s+/g, '').replace(/[^0-9]/gi, '');
+                        let formattedValue = value.match(/.{1,4}/g)?.join(' ') || value;
+                        e.target.value = formattedValue;
+                    });
+
+                    // Process payment button
+                    document.getElementById('modalProcessBtn').addEventListener('click', async () => {
+                        const cardNumber = document.getElementById('modalCardNumber').value.replace(/\s+/g, '');
+                        const expiryMonth = document.getElementById('modalCardExpiryMonth').value;
+                        const expiryYear = document.getElementById('modalCardExpiryYear').value;
+                        const cvv = document.getElementById('modalCardCVV').value;
+
+                        // Validate fields
+                        if (!cardNumber || !expiryMonth || !expiryYear || !cvv) {
+                            document.getElementById('modalError').textContent = 'Please fill in all card details';
+                            document.getElementById('modalError').style.display = 'block';
+                            return;
+                        }
+
+                        if (cardNumber.length < 13 || cardNumber.length > 19) {
+                            document.getElementById('modalError').textContent = 'Please enter a valid card number';
+                            document.getElementById('modalError').style.display = 'block';
+                            return;
+                        }
+
+                        if (cvv.length < 3 || cvv.length > 4) {
+                            document.getElementById('modalError').textContent = 'Please enter a valid CVV';
+                            document.getElementById('modalError').style.display = 'block';
+                            return;
+                        }
+
+                        // Update form with card details
+                        document.getElementById('cardNumber').value = cardNumber;
+                        document.getElementById('cardExpiry').value = expiryMonth + expiryYear.slice(-2);
+                        document.getElementById('cardCVV').value = cvv;
+
+                        // Disable button and show processing
+                        const processBtn = document.getElementById('modalProcessBtn');
+                        processBtn.textContent = 'Processing...';
+                        processBtn.disabled = true;
+
+                        try {
+                            // Show processing message
+                            document.getElementById('modalError').innerHTML = `
+                <div style="color: #007bff; display: flex; align-items: center; gap: 8px;">
+                  <div style="width: 16px; height: 16px; border: 2px solid #007bff; border-top: 2px solid transparent; border-radius: 50%; animation: spin 1s linear infinite;"></div>
+                  Processing payment securely...
+                </div>
+                <style>
+                  @keyframes spin {
+                    0% { transform: rotate(0deg); }
+                    100% { transform: rotate(360deg); }
+                  }
+                </style>
+              `;
+                            document.getElementById('modalError').style.display = 'block';
+
+                            const result = await window.helcimProcess();
+
+                            // Parse the result (it's HTML with hidden fields)
+                            const tempDiv = document.createElement('div');
+                            tempDiv.innerHTML = result;
+
+                            // Extract response data
+                            const response = tempDiv.querySelector('#response')?.value;
+                            const responseMessage = tempDiv.querySelector('#responseMessage')?.value;
+                            const transactionId = tempDiv.querySelector('#transactionId')?.value;
+                            const cardToken = tempDiv.querySelector('#cardToken')?.value;
+                            const approvalCode = tempDiv.querySelector('#approvalCode')?.value;
+                            if (response === '1') {
+                                // Success
+                                document.getElementById('modalError').innerHTML = `
+                  <div style="color: #28a745; display: flex; align-items: center; gap: 8px;">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                      <path d="M9,20.42L2.79,14.21L5.62,11.38L9,14.77L18.88,4.88L21.71,7.71L9,20.42Z" />
+                    </svg>
+                    Payment successful! Saving transaction...
+                  </div>
+                `;
+
+                                // Save transaction data to backend
+                                await saveTransactionToDatabase({
+                                    helcim_response: {
+                                        response,
+                                        responseMessage,
+                                        transactionId,
+                                        cardToken,
+                                        approvalCode,
+                                        amount: amount.toFixed(2),
+                                        currency: 'USD'
+                                    },
+                                    quote_data: quote,
+                                    customer_info: customerInfo,
+                                    billing_info: billingInfo,
+                                    payment_method: 'credit_card',
+                                    amount: amount,
+                                    product_type: activeTab,
+                                    vehicle_info: activeTab === 'vsc' ? {
+                                        make: vscForm.make,
+                                        model: vscForm.model,
+                                        year: vscForm.year,
+                                        mileage: vscForm.mileage,
+                                        vin: vscForm.vin
+                                    } : undefined
+                                });
+
+                                // Show final success message
+                                document.getElementById('modalError').innerHTML = `
+                  <div style="color: #28a745; display: flex; align-items: center; gap: 8px;">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                      <path d="M9,20.42L2.79,14.21L5.62,11.38L9,14.77L18.88,4.88L21.71,7.71L9,20.42Z" />
+                    </svg>
+                    Payment completed! Redirecting...
+                  </div>
+                `;
+
+                                // Wait a moment then redirect to success page
+                                setTimeout(() => {
+                                    // Create success result
+                                    const successResult = {
+                                        success: true,
+                                        transaction_number: transactionId || `TXN-${Date.now()}`,
+                                        confirmation_number: `CONF-${transactionId || Date.now()}`,
+                                        amount: amount,
+                                        status: 'Approved',
+                                        payment_method: 'Credit Card',
+                                        customer_info: customerInfo,
+                                        processor_transaction_id: transactionId,
+                                        approval_code: approvalCode,
+                                        response_message: responseMessage,
+                                        next_steps: [
+                                            'Your payment has been processed successfully',
+                                            'You will receive a confirmation email shortly',
+                                            'Your protection plan is now active',
+                                            'Keep your confirmation number for your records'
+                                        ]
+                                    };
+
+                                    // Clean up
+                                    document.body.removeChild(modal);
+                                    document.body.removeChild(form);
+
+                                    setPaymentResult(successResult);
+                                    setShowPayment(false);
+                                    setError('');
+                                    resolve(successResult);
+                                }, 1500);
+
+                            } else {
+                                // Payment failed
+                                const errorMsg = responseMessage || 'Payment processing failed';
+                                console.error('❌ HelcimJS payment failed:', {
+                                    response,
+                                    responseMessage,
+                                    transactionId
+                                });
+
+                                document.getElementById('modalError').innerHTML = `
+                  <div style="color: #dc3545; display: flex; align-items: center; gap: 8px;">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                      <path d="M12,2C17.53,2 22,6.47 22,12C22,17.53 17.53,22 12,22C6.47,22 2,17.53 2,12C2,6.47 6.47,2 12,2M15.59,7L12,10.59L8.41,7L7,8.41L10.59,12L7,15.59L8.41,17L12,13.41L15.59,17L17,15.59L13.41,12L17,8.41L15.59,7Z" />
+                    </svg>
+                    Payment failed: ${errorMsg}
+                  </div>
+                `;
+
+                                // Re-enable the process button
+                                processBtn.textContent = 'Process Payment';
+                                processBtn.disabled = false;
+                            }
+
+                        } catch (error) {
+                            console.error('❌ HelcimJS payment error:', error);
+
+                            let errorMessage = 'Payment processing failed';
+                            if (error.message) {
+                                errorMessage = error.message;
+                            } else if (typeof error === 'string') {
+                                errorMessage = error;
+                            }
+
+                            document.getElementById('modalError').innerHTML = `
+                <div style="color: #dc3545; display: flex; align-items: center; gap: 8px;">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M12,2C17.53,2 22,6.47 22,12C22,17.53 17.53,22 12,22C6.47,22 2,17.53 2,12C2,6.47 6.47,2 12,2M15.59,7L12,10.59L8.41,7L7,8.41L10.59,12L7,15.59L8.41,17L12,13.41L15.59,17L17,15.59L13.41,12L17,8.41L15.59,7Z" />
+                  </svg>
+                  Error: ${errorMessage}
+                </div>
+              `;
+
+                            // Re-enable the process button
+                            processBtn.textContent = 'Process Payment';
+                            processBtn.disabled = false;
+
+                            // If it's a network error or validation error, don't close modal
+                            if (errorMessage.includes('network') || errorMessage.includes('validation')) {
+                                // Keep modal open for retry
+                                return;
+                            }
+                        }
+                    });
+
+                    // Cancel button
+                    document.getElementById('modalCancelBtn').addEventListener('click', () => {
+                        document.body.removeChild(modal);
+                        document.body.removeChild(form);
+                        reject(new Error('Payment cancelled by user'));
+                    });
+
+                    // Close on backdrop click
+                    modal.addEventListener('click', (e) => {
+                        if (e.target === modal) {
+                            document.body.removeChild(modal);
+                            document.body.removeChild(form);
+                            reject(new Error('Payment cancelled by user'));
+                        }
+                    });
+                };
+
+                // Show payment modal
+                createPaymentModal();
+
+            } catch (error) {
+                console.error('❌ HelcimJS initialization error:', error);
+                reject(error);
+            }
+        });
+    }
+
+    const processPayment = async () => {
+        if (!quote) return;
+
+        // Validate required fields
+        if (!customerInfo.first_name || !customerInfo.last_name || !customerInfo.email ||
+            !billingInfo.address || !billingInfo.city || !billingInfo.state || !billingInfo.zip_code) {
+            setError('Please fill in all required fields');
+            return;
+        }
+
+        setPaymentLoading(true);
+        setError('');
+
+        try {
+            const totalAmount = quote.pricing_breakdown?.total_price || quote.pricing?.total_price || 0;
+
+            // Use the Helcim payment processor
+            const result = await processHelcimPayment(totalAmount);
+
+            // The processHelcimPayment function handles setting paymentResult and navigation
+
+        } catch (error) {
+            console.error('Payment processing failed:', error);
+            setError(error.message || 'Payment processing failed. Please try again.');
+            setPaymentLoading(false);
+        }
+    };
 
   // VIN Validation
   const validateVIN = (vin) => {
@@ -300,20 +750,15 @@ const QuotePage = () => {
       });
 
       const result = await response.json();
-      console.log('VIN Decode Response:', result); // Debug log
 
       if (result.success) {
-        // Extract vehicle info from either vehicle_info or root level
         const vehicleInfo = result.vehicle_info || result.data?.vehicle_info || result;
         
-        // Set vehicle information
         setVinInfo(vehicleInfo);
 
-        // Find matching make from our list or use the decoded make
         const decodedMake = (vehicleInfo.make || '').toLowerCase();
         const matchedMake = vehicleMakes.find(make => make.toLowerCase() === decodedMake) || vehicleInfo.make || '';
 
-        // Update form with decoded information
         const updatedForm = {
           ...vscForm,
           vin: vin.toUpperCase(),
@@ -326,7 +771,6 @@ const QuotePage = () => {
         setVscForm(updatedForm);
         setVinError('');
 
-        // Process eligibility information if available
         if (result.eligibility) {
           const eligibilityResult = {
             eligible: result.eligibility.eligible,
@@ -338,7 +782,6 @@ const QuotePage = () => {
           };
           setEligibilityCheck(eligibilityResult);
         } else {
-          // Fallback to local eligibility check if API didn't provide one
           if (vehicleInfo.year && vscForm.mileage) {
             const localEligibility = checkVehicleEligibilityUpdated(
               vehicleInfo, 
@@ -418,11 +861,9 @@ const QuotePage = () => {
         return
       }
 
-      // Find the selected product
       const selectedProduct = heroProducts.find(p => p.value === heroForm.product_type)
       const coverageLimit = selectedProduct?.coverageLimit || parseInt(heroForm.coverage_limit) || 500
 
-      // Strip the coverage limit suffix from product type if it exists
       const baseProductType = heroForm.product_type.replace(/_500|_1000/g, '')
 
       const quoteData = {
@@ -432,18 +873,14 @@ const QuotePage = () => {
         customer_type: heroForm.customer_type
       }
 
-      console.log('Sending quote data:', quoteData)
-
       const response = await heroAPI.generateQuote(quoteData)
-      console.log('Received quote response:', response)
       const responseData = Array.isArray(response) ? response[0] : response
-      console.log('Processed quote response:', responseData)
       
       if (responseData.success) {
-        // Set the entire responseData as the quote, not responseData.data
         setQuote(responseData)
         setShowPayment(false)
         setPaymentResult(null)
+        setShareableQuote(null) // Reset shareable quote
       } else {
         setError(responseData.error || 'Quote generation failed')
       }
@@ -492,6 +929,7 @@ const QuotePage = () => {
         setQuote(responseData)
         setShowPayment(false)
         setPaymentResult(null)
+        setShareableQuote(null) // Reset shareable quote
       } else {
         setError(responseData.error || 'Quote generation failed')
       }
@@ -502,534 +940,478 @@ const QuotePage = () => {
     }
   }
 
-  // Main Payment Processing Function
-  const processPayment = async () => {
-    setPaymentLoading(true);
+  // Create shareable quote for resellers
+  const createShareableQuote = async () => {
+    if (!quote || userType !== 'reseller') return;
+
+    // Validate customer info
+    if (!customerInfo.first_name || !customerInfo.last_name || !customerInfo.email) {
+      setError('Please fill in all required customer information');
+      return;
+    }
+
+    setShareLoading(true);
     setError('');
 
     try {
-      // Validate required customer information
-      if (!customerInfo.first_name || !customerInfo.last_name || !customerInfo.email) {
-        setError('Please fill in all customer information fields');
-        return;
-      }
-
-      const totalAmount = quote.pricing_breakdown?.total_price || quote.pricing?.total_price || 0;
-
-      // Validate billing information for credit card payments
-      if (!billingInfo.address || !billingInfo.city || !billingInfo.state || !billingInfo.zip_code || !billingInfo.country) {
-        setError('Please fill in all billing address fields');
-        return;
-      }
+      const token = localStorage.getItem('token');
       
-      await processHelcimPayment(totalAmount);
-
-    } catch (err) {
-      console.error('💥 Payment error:', err);
-      setError(`Payment failed: ${err.message}`);
-    } finally {
-      setPaymentLoading(false);
-    }
-  }
-
-  // HelcimJS Payment Processing (Form-based API)
-  const processHelcimPayment = async (amount) => {
-    return new Promise((resolve, reject) => {
-      try {
-
-        if (typeof window.helcimProcess !== 'function') {
-          throw new Error('HelcimJS not loaded. Please refresh the page and try again.');
-        }
-
-        const formId = 'helcimPaymentForm';
-        const existingForm = document.getElementById(formId);
-        if (existingForm) {
-          existingForm.remove();
-        }
-
-        const form = document.createElement('form');
-        form.id = formId;
-        form.name = 'helcimForm';
-        form.style.display = 'none';
-        form.method = 'POST';
-        form.action = 'javascript:void(0);'; // Prevent submission to any URL
-
-        // Prevent form submission
-        form.addEventListener('submit', (e) => {
-          e.preventDefault();
-          e.stopPropagation(); // Stop event bubbling
-          return false;
-        });
-
-        let resultsDiv = document.getElementById('helcimResults');
-        if (!resultsDiv) {
-          resultsDiv = document.createElement('div');
-          resultsDiv.id = 'helcimResults';
-          resultsDiv.style.display = 'none';
-          document.body.appendChild(resultsDiv);
-        }
-
-        const createHiddenInput = (name, value) => {
-          const input = document.createElement('input');
-          input.type = 'hidden';
-          input.id = name;
-          input.name = name;
-          input.value = value || '';
-          return input;
-        };
-
-        // Form fields (unchanged)
-        form.appendChild(createHiddenInput('token', import.meta.env.VITE_HELCIM_TOKEN || 'de2a5120a337b055a082b5'));
-        form.appendChild(createHiddenInput('amount', amount.toFixed(2)));
-        form.appendChild(createHiddenInput('currency', 'USD'));
-        form.appendChild(createHiddenInput('test', import.meta.env.VITE_HELCIM_TEST_MODE || '1'));
-        form.appendChild(createHiddenInput('dontSubmit', '1')); // Signal HelcimJS to avoid submission
-        form.appendChild(createHiddenInput('orderNumber', `INV-${quote.quote_id || Date.now()}`));
-        form.appendChild(createHiddenInput('customerCode', `CUST-${Date.now()}`));
-        form.appendChild(createHiddenInput('comments', `${activeTab === 'vsc' ? 'Vehicle Service Contract' : 'Hero Product'} - ConnectedAutoCare`));
-        form.appendChild(createHiddenInput('billing_contactName', `${customerInfo.first_name} ${customerInfo.last_name}`));
-        form.appendChild(createHiddenInput('billing_street1', billingInfo.address));
-        form.appendChild(createHiddenInput('billing_city', billingInfo.city));
-        form.appendChild(createHiddenInput('billing_province', billingInfo.state));
-        form.appendChild(createHiddenInput('billing_postalCode', billingInfo.zip_code));
-        form.appendChild(createHiddenInput('billing_country', billingInfo.country));
-        form.appendChild(createHiddenInput('billing_email', customerInfo.email));
-        form.appendChild(createHiddenInput('billing_phone', customerInfo.phone || ''));
-        form.appendChild(createHiddenInput('cardNumber', ''));
-        form.appendChild(createHiddenInput('cardExpiry', ''));
-        form.appendChild(createHiddenInput('cardCVV', ''));
-        form.appendChild(createHiddenInput('cardHolderName', `${customerInfo.first_name} ${customerInfo.last_name}`));
-        form.appendChild(createHiddenInput('cardHolderAddress', billingInfo.address)); // Map to AVS field
-        form.appendChild(createHiddenInput('cardHolderPostalCode', billingInfo.zip_code)); // Map to AVS field
-
-        document.body.appendChild(form);
-        // Create a payment collection form/modal for card details
-        const createPaymentModal = () => {
-          const modal = document.createElement('div');
-          modal.id = 'helcimPaymentModal';
-          modal.style.cssText = `
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background-color: rgba(0, 0, 0, 0.6);
-            z-index: 10000;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-          `;
-
-          const modalContent = document.createElement('div');
-          modalContent.style.cssText = `
-            background: white;
-            padding: 30px;
-            border-radius: 8px;
-            max-width: 500px;
-            width: 90%;
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
-          `;
-
-          modalContent.innerHTML = `
-            <h3 style="margin-bottom: 20px; text-align: center; color: #333;">Secure Payment</h3>
-            <p style="margin-bottom: 20px; color: #666; text-align: center;">
-              Amount: <strong>${amount.toFixed(2)}</strong>
-            </p>
-            
-            <div style="margin-bottom: 15px;">
-              <label style="display: block; margin-bottom: 5px; font-weight: bold;">Card Number *</label>
-              <input type="text" id="modalCardNumber" placeholder="1234 5678 9012 3456" 
-                     style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 16px;" 
-                     maxlength="19">
-            </div>
-            
-            <div style="display: flex; gap: 15px; margin-bottom: 15px;">
-              <div style="flex: 1;">
-                <label style="display: block; margin-bottom: 5px; font-weight: bold;">Expiry Month *</label>
-                <select id="modalCardExpiryMonth" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px;">
-                  <option value="">MM</option>
-                  ${Array.from({length: 12}, (_, i) => `<option value="${String(i + 1).padStart(2, '0')}">${String(i + 1).padStart(2, '0')}</option>`).join('')}
-                </select>
-              </div>
-              <div style="flex: 1;">
-                <label style="display: block; margin-bottom: 5px; font-weight: bold;">Expiry Year *</label>
-                <select id="modalCardExpiryYear" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px;">
-                  <option value="">YYYY</option>
-                  ${Array.from({length: 10}, (_, i) => {
-                    const year = new Date().getFullYear() + i;
-                    return `<option value="${year}">${year}</option>`;
-                  }).join('')}
-                </select>
-              </div>
-              <div style="flex: 1;">
-                <label style="display: block; margin-bottom: 5px; font-weight: bold;">CVV *</label>
-                <input type="text" id="modalCardCVV" placeholder="123" 
-                       style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px;" 
-                       maxlength="4">
-              </div>
-            </div>
-            
-            <div id="modalError" style="color: red; margin-bottom: 15px; display: none;"></div>
-            
-            <div style="display: flex; gap: 10px; justify-content: center;">
-              <button type="button" id="modalProcessBtn" 
-                      style="background: #007bff; color: white; border: none; padding: 12px 24px; border-radius: 4px; cursor: pointer; font-size: 16px;">
-                Process Payment
-              </button>
-              <button type="button" id="modalCancelBtn" 
-                      style="background: #dc3545; color: white; border: none; padding: 12px 24px; border-radius: 4px; cursor: pointer; font-size: 16px;">
-                Cancel
-              </button>
-            </div>
-            
-            <div style="text-align: center; margin-top: 15px; font-size: 12px; color: #666;">
-              <div style="display: flex; align-items: center; justify-content: center; gap: 5px;">
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
-                  <path d="M18,8A6,6 0 0,0 12,2A6,6 0 0,0 6,8H4V20H20V8H18M12,4A4,4 0 0,1 16,8H8A4,4 0 0,1 12,4M12,17A2,2 0 0,1 10,15A2,2 0 0,1 12,13A2,2 0 0,1 14,15A2,2 0 0,1 12,17Z" />
-                </svg>
-                Your payment is secure and encrypted
-              </div>
-            </div>
-          `;
-
-          modal.appendChild(modalContent);
-          document.body.appendChild(modal);
-
-          // Format card number input
-          document.getElementById('modalCardNumber').addEventListener('input', (e) => {
-            let value = e.target.value.replace(/\s+/g, '').replace(/[^0-9]/gi, '');
-            let formattedValue = value.match(/.{1,4}/g)?.join(' ') || value;
-            e.target.value = formattedValue;
-          });
-
-          // Process payment button
-          document.getElementById('modalProcessBtn').addEventListener('click', async () => {
-            const cardNumber = document.getElementById('modalCardNumber').value.replace(/\s+/g, '');
-            const expiryMonth = document.getElementById('modalCardExpiryMonth').value;
-            const expiryYear = document.getElementById('modalCardExpiryYear').value;
-            const cvv = document.getElementById('modalCardCVV').value;
-
-            // Validate fields
-            if (!cardNumber || !expiryMonth || !expiryYear || !cvv) {
-              document.getElementById('modalError').textContent = 'Please fill in all card details';
-              document.getElementById('modalError').style.display = 'block';
-              return;
-            }
-
-            if (cardNumber.length < 13 || cardNumber.length > 19) {
-              document.getElementById('modalError').textContent = 'Please enter a valid card number';
-              document.getElementById('modalError').style.display = 'block';
-              return;
-            }
-
-            if (cvv.length < 3 || cvv.length > 4) {
-              document.getElementById('modalError').textContent = 'Please enter a valid CVV';
-              document.getElementById('modalError').style.display = 'block';
-              return;
-            }
-
-            // Update form with card details
-            document.getElementById('cardNumber').value = cardNumber;
-            document.getElementById('cardExpiry').value = expiryMonth + expiryYear.slice(-2);
-            document.getElementById('cardCVV').value = cvv;
-
-            // Disable button and show processing
-            const processBtn = document.getElementById('modalProcessBtn');
-            processBtn.textContent = 'Processing...';
-            processBtn.disabled = true;
-
-            try {              
-              // Show processing message
-              document.getElementById('modalError').innerHTML = `
-                <div style="color: #007bff; display: flex; align-items: center; gap: 8px;">
-                  <div style="width: 16px; height: 16px; border: 2px solid #007bff; border-top: 2px solid transparent; border-radius: 50%; animation: spin 1s linear infinite;"></div>
-                  Processing payment securely...
-                </div>
-                <style>
-                  @keyframes spin {
-                    0% { transform: rotate(0deg); }
-                    100% { transform: rotate(360deg); }
-                  }
-                </style>
-              `;
-              document.getElementById('modalError').style.display = 'block';
-              
-              const result = await window.helcimProcess();
-
-              // Parse the result (it's HTML with hidden fields)
-              const tempDiv = document.createElement('div');
-              tempDiv.innerHTML = result;
-              
-              // Extract response data
-              const response = tempDiv.querySelector('#response')?.value;
-              const responseMessage = tempDiv.querySelector('#responseMessage')?.value;
-              const transactionId = tempDiv.querySelector('#transactionId')?.value;
-              const cardToken = tempDiv.querySelector('#cardToken')?.value;
-              const approvalCode = tempDiv.querySelector('#approvalCode')?.value;
-              if (response === '1') {
-                // Success
-                document.getElementById('modalError').innerHTML = `
-                  <div style="color: #28a745; display: flex; align-items: center; gap: 8px;">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-                      <path d="M9,20.42L2.79,14.21L5.62,11.38L9,14.77L18.88,4.88L21.71,7.71L9,20.42Z" />
-                    </svg>
-                    Payment successful! Saving transaction...
-                  </div>
-                `;
-
-                // Save transaction data to backend
-                await saveTransactionToDatabase({
-                  helcim_response: {
-                    response,
-                    responseMessage,
-                    transactionId,
-                    cardToken,
-                    approvalCode,
-                    amount: amount.toFixed(2),
-                    currency: 'USD'
-                  },
-                  quote_data: quote,
-                  customer_info: customerInfo,
-                  billing_info: billingInfo,
-                  payment_method: 'credit_card',
-                  amount: amount,
-                  product_type: activeTab,
-                  vehicle_info: activeTab === 'vsc' ? {
-                    make: vscForm.make,
-                    model: vscForm.model,
-                    year: vscForm.year,
-                    mileage: vscForm.mileage,
-                    vin: vscForm.vin
-                  } : undefined
-                });
-
-                // Show final success message
-                document.getElementById('modalError').innerHTML = `
-                  <div style="color: #28a745; display: flex; align-items: center; gap: 8px;">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-                      <path d="M9,20.42L2.79,14.21L5.62,11.38L9,14.77L18.88,4.88L21.71,7.71L9,20.42Z" />
-                    </svg>
-                    Payment completed! Redirecting...
-                  </div>
-                `;
-
-                // Wait a moment then redirect to success page
-                setTimeout(() => {
-                  // Create success result
-                  const successResult = {
-                    success: true,
-                    transaction_number: transactionId || `TXN-${Date.now()}`,
-                    confirmation_number: `CONF-${transactionId || Date.now()}`,
-                    amount: amount,
-                    status: 'Approved',
-                    payment_method: 'Credit Card',
-                    customer_info: customerInfo,
-                    processor_transaction_id: transactionId,
-                    approval_code: approvalCode,
-                    response_message: responseMessage,
-                    next_steps: [
-                      'Your payment has been processed successfully',
-                      'You will receive a confirmation email shortly',
-                      'Your protection plan is now active',
-                      'Keep your confirmation number for your records'
-                    ]
-                  };
-
-                  // Clean up
-                  document.body.removeChild(modal);
-                  document.body.removeChild(form);
-
-                  setPaymentResult(successResult);
-                  setShowPayment(false);
-                  setError('');
-                  resolve(successResult);
-                }, 1500);
-
-              } else {
-                // Payment failed
-                const errorMsg = responseMessage || 'Payment processing failed';
-                console.error('❌ HelcimJS payment failed:', {
-                  response,
-                  responseMessage,
-                  transactionId
-                });
-
-                document.getElementById('modalError').innerHTML = `
-                  <div style="color: #dc3545; display: flex; align-items: center; gap: 8px;">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-                      <path d="M12,2C17.53,2 22,6.47 22,12C22,17.53 17.53,22 12,22C6.47,22 2,17.53 2,12C2,6.47 6.47,2 12,2M15.59,7L12,10.59L8.41,7L7,8.41L10.59,12L7,15.59L8.41,17L12,13.41L15.59,17L17,15.59L13.41,12L17,8.41L15.59,7Z" />
-                    </svg>
-                    Payment failed: ${errorMsg}
-                  </div>
-                `;
-                
-                // Re-enable the process button
-                processBtn.textContent = 'Process Payment';
-                processBtn.disabled = false;
-              }
-
-            } catch (error) {
-              console.error('❌ HelcimJS payment error:', error);
-              
-              let errorMessage = 'Payment processing failed';
-              if (error.message) {
-                errorMessage = error.message;
-              } else if (typeof error === 'string') {
-                errorMessage = error;
-              }
-
-              document.getElementById('modalError').innerHTML = `
-                <div style="color: #dc3545; display: flex; align-items: center; gap: 8px;">
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-                    <path d="M12,2C17.53,2 22,6.47 22,12C22,17.53 17.53,22 12,22C6.47,22 2,17.53 2,12C2,6.47 6.47,2 12,2M15.59,7L12,10.59L8.41,7L7,8.41L10.59,12L7,15.59L8.41,17L12,13.41L15.59,17L17,15.59L13.41,12L17,8.41L15.59,7Z" />
-                  </svg>
-                  Error: ${errorMessage}
-                </div>
-              `;
-              
-              // Re-enable the process button
-              processBtn.textContent = 'Process Payment';
-              processBtn.disabled = false;
-              
-              // If it's a network error or validation error, don't close modal
-              if (errorMessage.includes('network') || errorMessage.includes('validation')) {
-                // Keep modal open for retry
-                return;
-              }
-            }
-          });
-
-          // Cancel button
-          document.getElementById('modalCancelBtn').addEventListener('click', () => {
-            document.body.removeChild(modal);
-            document.body.removeChild(form);
-            reject(new Error('Payment cancelled by user'));
-          });
-
-          // Close on backdrop click
-          modal.addEventListener('click', (e) => {
-            if (e.target === modal) {
-              document.body.removeChild(modal);
-              document.body.removeChild(form);
-              reject(new Error('Payment cancelled by user'));
-            }
-          });
-        };
-
-        // Show payment modal
-        createPaymentModal();
-
-      } catch (error) {
-        console.error('❌ HelcimJS initialization error:', error);
-        reject(error);
-      }
-    });
-  }
-
-  // Save Transaction to Database
-  const saveTransactionToDatabase = async (transactionData) => {
-
-    const response = await fetch(`${API_BASE_URL}/api/payments/process`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        action: 'save_transaction',
-        transaction_data: transactionData
-      })
-    });
-
-    const result = await response.json();
-    
-    if (!result.success) {
-      throw new Error(result.error || 'Failed to save transaction data');
-    }
-
-    return result.data;
-  }
-
-  // Financing Payment Processing
-  const processFinancingPayment = async (amount) => {
-
-    const paymentData = {
-      quote_id: quote.quote_id || `QUOTE-${Date.now()}`,
-      payment_method: 'financing',
-      amount: amount,
-      currency: 'USD',
-      financing_terms: financingTerms,
-      customer_info: {
-        first_name: customerInfo.first_name,
-        last_name: customerInfo.last_name,
-        email: customerInfo.email,
-        phone: customerInfo.phone || ''
-      },
-      payment_details: {
-        product_type: activeTab === 'vsc' ? 'vehicle_service_contract' : 'hero_product',
-        coverage_details: quote.coverage_details || {},
-        vehicle_info: activeTab === 'vsc' ? {
+      const shareableData = {
+        product_type: activeTab,
+        customer_info: customerInfo, // Now required for customer creation
+        notes: quoteNotes,
+        create_shareable: true,
+        // Include quote-specific data
+        ...(activeTab === 'hero' ? {
+          hero_product_type: heroForm.product_type,
+          term_years: parseInt(heroForm.term_years),
+          coverage_limit: parseInt(heroForm.coverage_limit) || 500,
+          state: 'FL', // You might want to get this from customer info
+          zip_code: '33101' // You might want to get this from customer info
+        } : {
           make: vscForm.make,
           model: vscForm.model,
-          year: vscForm.year,
-          mileage: vscForm.mileage,
+          year: parseInt(vscForm.year),
+          mileage: parseInt(vscForm.mileage),
+          coverage_level: vscForm.coverage_level,
+          term_months: parseInt(vscForm.term_months),
           vin: vscForm.vin
-        } : undefined
-      }
-    };
-
-    const response = await fetch(`${API_BASE_URL}/api/payments/process`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(paymentData)
-    });
-
-    const result = await response.json();
-    
-    if (result.success && result.data) {
-      
-      const successResult = {
-        success: true,
-        transaction_number: result.data.transaction_number,
-        confirmation_number: result.data.confirmation_number,
-        amount: amount,
-        status: result.data.status,
-        payment_method: 'Financing',
-        customer_info: customerInfo,
-        financing_details: {
-          terms: financingTerms,
-          monthly_payment: amount / parseInt(financingTerms)
-        },
-        next_steps: result.data.next_steps || [
-          'Your financing application has been approved',
-          'You will receive your payment schedule via email',
-          'Your protection plan is now active'
-        ]
+        })
       };
 
-      setPaymentResult(successResult);
-      setShowPayment(false);
-      setError('');
-    } else {
-      throw new Error(result.error || 'Financing processing failed');
-    }
-  }
+      const response = await fetch(`${API_BASE_URL}/api/resellers/quotes/generate`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(shareableData)
+      });
 
-  const handlePurchase = () => {
-    if (!quote) return
-    setShowPayment(true)
-    setError('')
-    setPaymentResult(null)
-  }
+      const result = await response.json();
+
+      if (result.success) {
+        setShareableQuote(result);
+        setShareDialogOpen(true);
+      } else {
+        setError(result.error || 'Failed to create shareable quote');
+      }
+    } catch (err) {
+      console.error('Shareable quote creation failed:', err);
+      setError('Failed to create shareable quote');
+    } finally {
+      setShareLoading(false);
+    }
+  };
+
+  // Copy share link to clipboard
+  const copyShareLink = async () => {
+    if (!shareableQuote?.sharing?.share_url) return;
+
+    try {
+      await navigator.clipboard.writeText(shareableQuote.sharing.share_url);
+      setCopiedToClipboard(true);
+      setTimeout(() => setCopiedToClipboard(false), 2000);
+    } catch (err) {
+      console.error('Failed to copy link:', err);
+    }
+  };
+
+  // Send quote via email (for resellers)
+  const sendQuoteByEmail = async () => {
+    if (!shareableQuote || !customerInfo.email) return;
+
+    try {
+      const token = localStorage.getItem('token');
+      
+      const emailData = {
+        quote_id: shareableQuote.quote_id,
+        customer_email: customerInfo.email,
+        customer_name: `${customerInfo.first_name} ${customerInfo.last_name}`,
+        share_url: shareableQuote.sharing.share_url,
+        notes: quoteNotes
+      };
+
+      const response = await fetch(`${API_BASE_URL}/api/resellers/quotes/send-email`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(emailData)
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        alert('Quote sent successfully to customer!');
+      } else {
+        setError(result.error || 'Failed to send quote');
+      }
+    } catch (err) {
+      console.error('Email sending failed:', err);
+      setError('Failed to send quote via email');
+    }
+  };
+
+  // Handle purchase for direct customers
+    const handlePurchase = () => {
+        if (!quote) {
+            console.error('No quote available');
+            setError('No quote available to purchase');
+            return;
+        }
+        if (userType === 'reseller') {
+            createShareableQuote();
+        } else {
+            setShowPayment(true);
+            setError('');
+            setPaymentResult(null);
+        }
+    };
 
   const resetQuote = () => {
     setQuote(null)
     setShowPayment(false)
     setPaymentResult(null)
+    setShareableQuote(null)
     setError('')
   }
 
+  // User type indicator
+  const UserTypeIndicator = () => (
+    <div className="mb-6">
+      <Card className="border-l-4 border-l-primary">
+        <CardContent className="pt-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-3">
+              {userType === 'reseller' ? (
+                <Building2 className="h-6 w-6 text-primary" />
+              ) : (
+                <User className="h-6 w-6 text-primary" />
+              )}
+              <div>
+                <h3 className="font-semibold">
+                  {userType === 'reseller' ? 'Reseller Portal' : 'Customer Quote'}
+                </h3>
+                <p className="text-sm text-muted-foreground">
+                  {userType === 'reseller' 
+                    ? 'Generate quotes to share with your customers'
+                    : 'Get instant quotes and purchase protection plans'
+                  }
+                </p>
+              </div>
+            </div>
+
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+
+  // Shareable Quote Dialog
+    const ShareableQuoteDialog = () => (
+        <Dialog open={shareDialogOpen} onOpenChange={setShareDialogOpen}>
+            <DialogContent className="max-w-2xl">
+                <DialogHeader>
+                    <DialogTitle className="flex items-center space-x-2">
+                        <Share2 className="h-5 w-5" />
+                        <span>Quote Created & Ready to Share</span>
+                    </DialogTitle>
+                    <DialogDescription>
+                        Your quote has been created for {customerInfo.first_name} {customerInfo.last_name} and is ready to share.
+                    </DialogDescription>
+                </DialogHeader>
+
+                <div className="space-y-6">
+                    {/* Quote Summary */}
+                    <div className="bg-gray-50 p-4 rounded-lg">
+                        <h4 className="font-semibold mb-2">Quote Summary</h4>
+                        <div className="grid grid-cols-2 gap-4 text-sm">
+                            <div>
+                                <span className="text-muted-foreground">Quote ID:</span>
+                                <p className="font-mono">{shareableQuote?.quote_id}</p>
+                            </div>
+                            <div>
+                                <span className="text-muted-foreground">Total Amount:</span>
+                                <p className="font-semibold text-lg">
+                                    {formatCurrency(
+                                        shareableQuote?.payment_options?.full_payment ||
+                                        shareableQuote?.pricing?.total_price ||
+                                        shareableQuote?.total_price ||
+                                        0
+                                    )}
+                                </p>
+                            </div>
+                            <div>
+                                <span className="text-muted-foreground">Commission Rate:</span>
+                                <p className="font-semibold text-blue-600">
+                                    {shareableQuote?.reseller_info?.commission_rate_percent ||
+                                        `${((shareableQuote?.reseller_info?.commission_rate || 0) * 100).toFixed(1)}%`}
+                                </p>
+                            </div>
+                            <div>
+                                <span className="text-muted-foreground">Customer:</span>
+                                <p>{customerInfo.first_name} {customerInfo.last_name}</p>
+                                <p className="text-xs text-muted-foreground">{customerInfo.email}</p>
+                            </div>
+                            <div>
+                                <span className="text-muted-foreground">Monthly Payment:</span>
+                                <p className="font-semibold">
+                                    {formatCurrency(
+                                        shareableQuote?.payment_options?.monthly_payment ||
+                                        shareableQuote?.pricing?.monthly_payment ||
+                                        0
+                                    )}
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Share Link Section */}
+                    <div className="space-y-4">
+                        <h4 className="font-semibold">Share Quote Link</h4>
+
+                        {/* Copy Link */}
+                        <div className="space-y-2">
+                            <Label>Shareable Quote Link</Label>
+                            <div className="flex items-center space-x-2">
+                                <Input
+                                    value={shareableQuote?.sharing?.share_url || ''}
+                                    readOnly
+                                    className="flex-1 font-mono text-sm"
+                                />
+                                <Button
+                                    onClick={copyShareLink}
+                                    variant="outline"
+                                    className={copiedToClipboard ? 'bg-green-50 text-green-700 border-green-300' : ''}
+                                >
+                                    {copiedToClipboard ? (
+                                        <>
+                                            <CheckCircle className="h-4 w-4 mr-2" />
+                                            Copied!
+                                        </>
+                                    ) : (
+                                        <>
+                                            <Copy className="h-4 w-4 mr-2" />
+                                            Copy Link
+                                        </>
+                                    )}
+                                </Button>
+                            </div>
+                        </div>
+
+                        <div className="flex justify-end space-x-2">
+                            <Button variant="outline" onClick={() => setShareDialogOpen(false)}>
+                                Close
+                            </Button>
+                            <Button onClick={resetQuote}>
+                                Create Another Quote
+                            </Button>
+                        </div>
+                    </div>
+                </div>
+            </DialogContent>
+        </Dialog>
+    );
+
+  // Quote Results with appropriate actions
+  const QuoteResultsCard = () => {
+    if (!quote) return null;
+
+    return (
+      <motion.div
+        initial={{ opacity: 0, x: 20 }}
+        animate={{ opacity: 1, x: 0 }}
+        transition={{ duration: 0.5 }}
+      >
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center space-x-2">
+              <CheckCircle className="h-6 w-6 text-green-500" />
+              <span>Your Quote</span>
+            </CardTitle>
+            <CardDescription>
+              {userType === 'reseller' ? 'Ready to share with customer' : 'Professional protection plan pricing'}
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            <div className="text-center space-y-2">
+              <div className="text-3xl font-bold price-highlight">
+                {formatCurrency(quote.pricing_breakdown?.total_price || quote.pricing?.total_price || 0)}
+              </div>
+
+            </div>
+
+            <div className="space-y-3">
+              <div className="flex justify-between">
+                <span>Base Price:</span>
+                <span>{formatCurrency(quote.pricing_breakdown?.base_calculation || quote.pricing?.base_price || 0)}</span>
+              </div>
+              {(quote.pricing_breakdown?.admin_fee || quote.pricing?.admin_fee) && (
+                <div className="flex justify-between">
+                  <span>Admin Fee:</span>
+                  <span>{formatCurrency(quote.pricing_breakdown?.admin_fee || quote.pricing?.admin_fee || 0)}</span>
+                </div>
+              )}
+              {(quote.pricing_breakdown?.tax_amount || quote.pricing?.tax_amount) && (
+                <div className="flex justify-between">
+                  <span>Tax:</span>
+                  <span>{formatCurrency(quote.pricing_breakdown?.tax_amount || quote.pricing?.tax_amount || 0)}</span>
+                </div>
+              )}
+              {quote.discount && (
+                <div className="flex justify-between text-green-600">
+                  <span>Discount:</span>
+                  <span>-{formatCurrency(quote.discount)}</span>
+                </div>
+              )}
+              <div className="border-t pt-3 flex justify-between font-bold">
+                <span>Total:</span>
+                <span>{formatCurrency(quote.pricing_breakdown?.total_price || quote.pricing?.total_price || 0)}</span>
+              </div>
+            </div>
+
+            {(quote.pricing_breakdown?.monthly_payment || quote.pricing?.monthly_payment || quote.payment_options?.monthly_payment) && (
+              <div className="bg-primary/5 p-4 rounded-lg">
+                <div className="text-center">
+                  <div className="text-sm text-muted-foreground">Monthly Payment</div>
+                  <div className="text-2xl font-bold text-primary">
+                    {formatCurrency(quote.pricing_breakdown?.monthly_payment || quote.pricing?.monthly_payment || quote.payment_options?.monthly_payment || 0)}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Action buttons based on user type */}
+            <div className="space-y-2">
+              {userType === 'reseller' ? (
+                <>
+                  <Button 
+                    className="w-full" 
+                    onClick={handlePurchase}
+                    disabled={!customerInfo.first_name || !customerInfo.last_name || !customerInfo.email || shareLoading}
+                  >
+                    {shareLoading ? (
+                      <>
+                        <Loader className="h-4 w-4 mr-2 animate-spin" />
+                        Creating Shareable Quote...
+                      </>
+                    ) : (
+                      <>
+                        <Share2 className="h-4 w-4 mr-2" />
+                        Create Shareable Quote
+                      </>
+                    )}
+                  </Button>
+                  {(!customerInfo.first_name || !customerInfo.last_name || !customerInfo.email) && (
+                    <p className="text-xs text-muted-foreground text-center">
+                      Please fill in customer information above to create shareable quote
+                    </p>
+                  )}
+                </>
+              ) : (
+                <Button className="w-full" onClick={handlePurchase}>
+                  <CreditCard className="h-4 w-4 mr-2" />
+                  Purchase This Plan
+                </Button>
+              )}
+              <Button variant="outline" className="w-full">
+                Save Quote
+              </Button>
+            </div>
+
+            {/* Coverage and product details */}
+            {quote.coverage_details && (
+              <div className="space-y-2">
+                <h4 className="font-semibold">Coverage Details:</h4>
+                <ul className="text-sm space-y-1">
+                  {Object.entries(quote.coverage_details).map(([key, value], index) => (
+                    <li key={index} className="flex items-center space-x-2">
+                      <CheckCircle className="h-4 w-4 text-green-500" />
+                      <span>
+                        <strong>{key.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())}:</strong> {value}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            {quote.product_info && (
+              <div className="space-y-2">
+                <h4 className="font-semibold">Product Information:</h4>
+                <ul className="text-sm space-y-1">
+                  {Object.entries(quote.product_info).map(([key, value], index) => (
+                    <li key={index} className="flex items-center space-x-2">
+                      <CheckCircle className="h-4 w-4 text-green-500" />
+                      <span>
+                        <strong>{key.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())}:</strong> {value}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            {activeTab === 'vsc' && vinInfo && (
+              <div className="space-y-2 pt-4 border-t">
+                <h4 className="font-semibold">Vehicle Information:</h4>
+                <div className="text-sm space-y-1 bg-gray-50 p-3 rounded">
+                  <p><strong>VIN:</strong> {vscForm.vin}</p>
+                  <p><strong>Vehicle:</strong> {vinInfo.year} {vinInfo.make} {vinInfo.model || 'Model not specified'}</p>
+                  {vinInfo.trim && <p><strong>Trim:</strong> {vinInfo.trim}</p>}
+                  {vinInfo.engine && <p><strong>Engine:</strong> {vinInfo.engine}</p>}
+                  <p><strong>Mileage:</strong> {parseInt(vscForm.mileage).toLocaleString()} miles</p>
+                  {eligibilityCheck && (
+                    <p><strong>Eligibility:</strong> 
+                      <span className={eligibilityCheck.eligible ? 'text-green-600 font-medium' : 'text-red-600 font-medium'}>
+                        {eligibilityCheck.eligible ? ' Eligible' : ' Not Eligible'}
+                      </span>
+                    </p>
+                  )}
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </motion.div>
+    );
+  };
+
+  // Handle shared quote access (when customer clicks reseller's link)
+  useEffect(() => {
+    const shareToken = searchParams.get('share_token');
+    if (shareToken) {
+      // Load shared quote
+      loadSharedQuote(shareToken);
+    }
+  }, [searchParams]);
+
+  const loadSharedQuote = async (shareToken) => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/quotes/shared/${shareToken}`);
+      const result = await response.json();
+
+      if (result.success) {
+        setQuote(result.quote_data);
+        setUserType('customer'); // Customer viewing shared quote
+        // Pre-fill customer info if available
+        if (result.customer_info) {
+          setCustomerInfo(result.customer_info);
+        }
+        // Auto-show payment for shared quotes
+        setShowPayment(true);
+      } else {
+        setError('Invalid or expired quote link');
+      }
+    } catch (err) {
+      console.error('Failed to load shared quote:', err);
+      setError('Failed to load quote');
+    }
+  };
+
+  // Early return for payment result display
   if (paymentResult) {
     return (
       <div className="min-h-screen py-12 bg-gray-50">
@@ -1104,299 +1486,279 @@ const QuotePage = () => {
       </div>
     )
   }
-
-  if (showPayment && quote) {
+// Payment form display (simplified - just customer info and billing)
+if (showPayment && quote) {
     return (
-      <div className="min-h-screen py-12 bg-gray-50">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            {/* Payment Form */}
-            <div className="lg:col-span-2">
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center space-x-2">
-                    <Lock className="h-5 w-5" />
-                    <span>Secure Payment</span>
-                  </CardTitle>
-                  <CardDescription>
-                    Complete your purchase to activate your protection plan
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-6">
-                  {/* Customer Information */}
-                  <div className="space-y-4">
-                    <h3 className="font-semibold text-lg">Customer Information</h3>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div>
-                        <Label htmlFor="first_name">First Name *</Label>
-                        <Input
-                          id="first_name"
-                          value={customerInfo.first_name}
-                          onChange={(e) => setCustomerInfo({...customerInfo, first_name: e.target.value})}
-                          required
-                        />
-                      </div>
-                      <div>
-                        <Label htmlFor="last_name">Last Name *</Label>
-                        <Input
-                          id="last_name"
-                          value={customerInfo.last_name}
-                          onChange={(e) => setCustomerInfo({...customerInfo, last_name: e.target.value})}
-                          required
-                        />
-                      </div>
-                      <div>
-                        <Label htmlFor="email">Email *</Label>
-                        <Input
-                          id="email"
-                          type="email"
-                          value={customerInfo.email}
-                          onChange={(e) => setCustomerInfo({...customerInfo, email: e.target.value})}
-                          required
-                        />
-                      </div>
-                      <div>
-                        <Label htmlFor="phone">Phone</Label>
-                        <Input
-                          id="phone"
-                          type="tel"
-                          value={customerInfo.phone}
-                          onChange={(e) => setCustomerInfo({...customerInfo, phone: e.target.value})}
-                        />
-                      </div>
+        <div className="min-h-screen py-12 bg-gray-50">
+            <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                    <div className="lg:col-span-2">
+                        <Card>
+                            <CardHeader>
+                                <CardTitle className="flex items-center space-x-2">
+                                    <Lock className="h-5 w-5" />
+                                    <span>Complete Your Purchase</span>
+                                </CardTitle>
+                                <CardDescription>
+                                    Provide your information to complete the purchase. Payment will be processed securely.
+                                </CardDescription>
+                            </CardHeader>
+                            <CardContent className="space-y-6">
+                                {/* Customer Information Form */}
+                                <div className="space-y-4">
+                                    <h3 className="font-semibold text-lg">Customer Information</h3>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <div>
+                                            <Label htmlFor="first_name">First Name *</Label>
+                                            <Input
+                                                id="first_name"
+                                                value={customerInfo.first_name}
+                                                onChange={(e) => setCustomerInfo({...customerInfo, first_name: e.target.value})}
+                                                required
+                                                disabled={paymentLoading}
+                                            />
+                                        </div>
+                                        <div>
+                                            <Label htmlFor="last_name">Last Name *</Label>
+                                            <Input
+                                                id="last_name"
+                                                value={customerInfo.last_name}
+                                                onChange={(e) => setCustomerInfo({...customerInfo, last_name: e.target.value})}
+                                                required
+                                                disabled={paymentLoading}
+                                            />
+                                        </div>
+                                        <div>
+                                            <Label htmlFor="email">Email *</Label>
+                                            <Input
+                                                id="email"
+                                                type="email"
+                                                value={customerInfo.email}
+                                                onChange={(e) => setCustomerInfo({...customerInfo, email: e.target.value})}
+                                                required
+                                                disabled={paymentLoading}
+                                            />
+                                        </div>
+                                        <div>
+                                            <Label htmlFor="phone">Phone</Label>
+                                            <Input
+                                                id="phone"
+                                                type="tel"
+                                                value={customerInfo.phone}
+                                                onChange={(e) => setCustomerInfo({...customerInfo, phone: e.target.value})}
+                                                disabled={paymentLoading}
+                                            />
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <Separator />
+
+                                {/* Billing Address */}
+                                <div className="space-y-4">
+                                    <h3 className="font-semibold text-lg">Billing Address</h3>
+                                    <div className="grid grid-cols-1 gap-4">
+                                        <div>
+                                            <Label htmlFor="address">Address *</Label>
+                                            <Input
+                                                id="address"
+                                                placeholder="123 Main St"
+                                                value={billingInfo.address}
+                                                onChange={(e) => setBillingInfo({...billingInfo, address: e.target.value})}
+                                                required
+                                                disabled={paymentLoading}
+                                            />
+                                        </div>
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <div>
+                                                <Label htmlFor="city">City *</Label>
+                                                <Input
+                                                    id="city"
+                                                    placeholder="City"
+                                                    value={billingInfo.city}
+                                                    onChange={(e) => setBillingInfo({...billingInfo, city: e.target.value})}
+                                                    required
+                                                    disabled={paymentLoading}
+                                                />
+                                            </div>
+                                            <div>
+                                                <Label htmlFor="state">State *</Label>
+                                                <Input
+                                                    id="state"
+                                                    placeholder="State"
+                                                    value={billingInfo.state}
+                                                    onChange={(e) => setBillingInfo({...billingInfo, state: e.target.value})}
+                                                    required
+                                                    disabled={paymentLoading}
+                                                />
+                                            </div>
+                                        </div>
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <div>
+                                                <Label htmlFor="zip_code">ZIP Code *</Label>
+                                                <Input
+                                                    id="zip_code"
+                                                    placeholder="12345"
+                                                    value={billingInfo.zip_code}
+                                                    onChange={(e) => setBillingInfo({
+                                                        ...billingInfo,
+                                                        zip_code: e.target.value.replace(/\D/g, '')
+                                                    })}
+                                                    maxLength={20}
+                                                    required
+                                                    disabled={paymentLoading}
+                                                />
+                                            </div>
+                                            <div>
+                                                <Label htmlFor="country">Country *</Label>
+                                                <Select
+                                                    value={billingInfo.country}
+                                                    onValueChange={(value) => setBillingInfo({...billingInfo, country: value})}
+                                                    disabled={paymentLoading}
+                                                >
+                                                    <SelectTrigger>
+                                                        <SelectValue placeholder="Country" />
+                                                    </SelectTrigger>
+                                                    <SelectContent>
+                                                        <SelectItem value="US">United States</SelectItem>
+                                                        <SelectItem value="CA">Canada</SelectItem>
+                                                    </SelectContent>
+                                                </Select>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <Separator />
+
+                                {/* Error Display */}
+                                {error && (
+                                    <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+                                        <div className="flex items-center space-x-2">
+                                            <AlertCircle className="h-4 w-4 text-red-600" />
+                                            <p className="text-red-600 text-sm">{error}</p>
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* Payment Notice */}
+                                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                                    <div className="flex items-center space-x-2">
+                                        <CreditCard className="h-4 w-4 text-blue-600" />
+                                        <span className="text-blue-800 font-medium">Secure Payment Processing</span>
+                                    </div>
+                                    <p className="text-blue-700 text-sm mt-1">
+                                        When you click "Process Payment", a secure payment window will open where you can safely enter your credit card information.
+                                    </p>
+                                </div>
+
+                                {/* Action Buttons */}
+                                <div className="space-y-3">
+                                    <Button
+                                        onClick={processPayment}
+                                        className="w-full"
+                                        disabled={paymentLoading}
+                                        size="lg"
+                                    >
+                                        {paymentLoading ? (
+                                            <>
+                                                <Loader className="h-4 w-4 mr-2 animate-spin" />
+                                                Processing...
+                                            </>
+                                        ) : (
+                                            <>
+                                                <CreditCard className="h-4 w-4 mr-2" />
+                                                Process Payment - {formatCurrency(quote.pricing_breakdown?.total_price || quote.pricing?.total_price || 0)}
+                                            </>
+                                        )}
+                                    </Button>
+                                    <Button
+                                        variant="outline"
+                                        onClick={() => setShowPayment(false)}
+                                        className="w-full"
+                                        disabled={paymentLoading}
+                                    >
+                                        Back to Quote
+                                    </Button>
+                                </div>
+
+                                {/* Security Notice */}
+                                <div className="bg-gray-50 p-4 rounded-lg border text-center">
+                                    <div className="flex items-center justify-center space-x-2 text-sm text-gray-600">
+                                        <Lock className="h-4 w-4" />
+                                        <span>Your payment information is encrypted and secure</span>
+                                    </div>
+                                    <p className="text-xs text-gray-500 mt-1">
+                                        Powered by Helcim - PCI DSS Level 1 Compliant
+                                    </p>
+                                </div>
+                            </CardContent>
+                        </Card>
                     </div>
-                  </div>
 
-                  <Separator />
+                    {/* Order Summary */}
+                    <div>
+                        <Card>
+                            <CardHeader>
+                                <CardTitle>Order Summary</CardTitle>
+                            </CardHeader>
+                            <CardContent className="space-y-4">
+                                <div className="space-y-3">
+                                    <div className="flex justify-between">
+                                        <span>Base Price:</span>
+                                        <span>{formatCurrency(quote.pricing_breakdown?.base_calculation || quote.pricing?.base_price || 0)}</span>
+                                    </div>
+                                    {(quote.pricing_breakdown?.admin_fee || quote.pricing?.admin_fee) && (
+                                        <div className="flex justify-between">
+                                            <span>Admin Fee:</span>
+                                            <span>{formatCurrency(quote.pricing_breakdown?.admin_fee || quote.pricing?.admin_fee || 0)}</span>
+                                        </div>
+                                    )}
+                                    {(quote.pricing_breakdown?.tax_amount || quote.pricing?.tax_amount) && (
+                                        <div className="flex justify-between">
+                                            <span>Tax:</span>
+                                            <span>{formatCurrency(quote.pricing_breakdown?.tax_amount || quote.pricing?.tax_amount || 0)}</span>
+                                        </div>
+                                    )}
+                                    <Separator />
+                                    <div className="flex justify-between font-bold text-lg">
+                                        <span>Total:</span>
+                                        <span>{formatCurrency(quote.pricing_breakdown?.total_price || quote.pricing?.total_price || 0)}</span>
+                                    </div>
+                                </div>
 
-                  {/* Payment Method Selection */}
-                  <div className="space-y-4">
-                    <h3 className="font-semibold text-lg">Payment Method</h3>
-                    <Tabs value={paymentMethod} onValueChange={setPaymentMethod}>
-                      <TabsList className="grid w-full grid-cols-1">
-                        <TabsTrigger value="credit_card">Credit Card</TabsTrigger>
-                      </TabsList>
+                                {/* Payment Methods Accepted */}
+                                <div className="bg-gray-50 p-3 rounded border">
+                                    <div className="text-sm font-medium mb-2">Payment Methods Accepted:</div>
+                                    <div className="flex items-center space-x-2 text-xs text-gray-600">
+                                        <span>💳 Visa</span>
+                                        <span>💳 MasterCard</span>
+                                        <span>💳 Amex</span>
+                                        <span>💳 Discover</span>
+                                    </div>
+                                </div>
 
-                      <TabsContent value="credit_card" className="space-y-4 mt-6">
-                        {/* Credit Card Payment Info */}
-                        <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
-                          <div className="flex items-center space-x-2 mb-2">
-                            <CreditCard className="h-5 w-5 text-blue-600" />
-                            <h4 className="font-medium text-blue-900">Secure Credit Card Payment</h4>
-                          </div>
-                          <p className="text-sm text-blue-700">
-                            Your payment will be processed securely through HelcimJS. No card information is stored on our servers.
-                          </p>
-                        </div>
-
-                        {/* Billing Address */}
-                        <div className="space-y-4">
-                          <h4 className="font-medium">Billing Address</h4>
-                          <div className="grid grid-cols-1 gap-4">
-                            <div>
-                              <Label htmlFor="address">Address *</Label>
-                              <Input
-                                id="address"
-                                placeholder="123 Main St"
-                                value={billingInfo.address}
-                                onChange={(e) => setBillingInfo({...billingInfo, address: e.target.value})}
-                                required
-                              />
-                            </div>
-                            <div className="grid grid-cols-2 gap-4">
-                              <div>
-                                <Label htmlFor="city">City *</Label>
-                                <Input
-                                  id="city"
-                                  placeholder="City"
-                                  value={billingInfo.city}
-                                  onChange={(e) => setBillingInfo({...billingInfo, city: e.target.value})}
-                                  required
-                                />
-                              </div>
-                              <div>
-                                <Label htmlFor="state">State *</Label>
-                                <Input
-                                  id="state"
-                                  placeholder="State"
-                                  value={billingInfo.state}
-                                  onChange={(e) => setBillingInfo({...billingInfo, state: e.target.value})}
-                                  required
-                                />
-                              </div>
-                            </div>
-                            <div className="grid grid-cols-2 gap-4">
-                              <div>
-                                <Label htmlFor="zip_code">ZIP Code *</Label>
-                                <Input
-                                  id="zip_code"
-                                  placeholder="12345"
-                                  value={billingInfo.zip_code}
-                                  onChange={(e) => setBillingInfo({
-                                    ...billingInfo, 
-                                      zip_code: e.target.value.replace(/\D/g, '')
-                                  })}
-                                  maxLength={20}
-                                  required
-                                />
-                              </div>
-                              <div>
-                                <Label htmlFor="country">Country *</Label>
-                                <Select
-                                  value={billingInfo.country}
-                                  onValueChange={(value) => setBillingInfo({...billingInfo, country: value})}
-                                >
-                                  <SelectTrigger>
-                                    <SelectValue placeholder="Country" />
-                                  </SelectTrigger>
-                                  <SelectContent>
-                                    <SelectItem value="US">United States</SelectItem>
-                                    <SelectItem value="CA">Canada</SelectItem>
-                                  </SelectContent>
-                                </Select>
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      </TabsContent>
-                    </Tabs>
-                  </div>
-
-                  <Separator />
-
-                  {/* Error Display */}
-                  {error && (
-                    <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-                      <div className="flex items-center space-x-2">
-                        <AlertCircle className="h-4 w-4 text-red-600" />
-                        <p className="text-red-600 text-sm">{error}</p>
-                      </div>
+                                {/* Quote Details */}
+                                <div className="bg-blue-50 p-3 rounded border border-blue-200">
+                                    <div className="text-sm">
+                                        <div className="font-medium text-blue-800">Quote Details:</div>
+                                        <div className="text-blue-700 text-xs mt-1">
+                                            <div>Product: {activeTab === 'vsc' ? 'Vehicle Service Contract' : 'Hero Protection Plan'}</div>
+                                            {activeTab === 'vsc' && vscForm.make && (
+                                                <div>Vehicle: {vscForm.year} {vscForm.make} {vscForm.model}</div>
+                                            )}
+                                            {quote.quote_id && <div>Quote ID: {quote.quote_id}</div>}
+                                        </div>
+                                    </div>
+                                </div>
+                            </CardContent>
+                        </Card>
                     </div>
-                  )}
-
-                  {/* Action Buttons */}
-                  <div className="space-y-3">
-                    <Button 
-                      onClick={processPayment} 
-                      className="w-full" 
-                      disabled={paymentLoading}
-                    >
-                      {paymentLoading ? (
-                        <>
-                          <Loader className="h-4 w-4 mr-2 animate-spin" />
-                          Processing Payment...
-                        </>
-                      ) : (
-                        <>
-                          <CreditCard className="h-4 w-4 mr-2" />
-                          {'Pay with Credit Card'}
-                        </>
-                      )}
-                    </Button>
-                    <Button 
-                      variant="outline" 
-                      onClick={() => setShowPayment(false)}
-                      className="w-full"
-                      disabled={paymentLoading}
-                    >
-                      Back to Quote
-                    </Button>
-                  </div>
-
-                  {/* Security Notice */}
-                  <div className="bg-gray-50 p-4 rounded-lg border text-center">
-                    <div className="flex items-center justify-center space-x-2 text-sm text-gray-600">
-                      <Lock className="h-4 w-4" />
-                      <span>Your payment information is encrypted and secure</span>
-                    </div>
-                    {paymentMethod === 'credit_card' && (
-                      <p className="text-xs text-gray-500 mt-2">
-                        Powered by HelcimJS - No card data stored on our servers
-                      </p>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
+                </div>
             </div>
-
-            {/* Order Summary */}
-            <div>
-              <Card>
-                <CardHeader>
-                  <CardTitle>Order Summary</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="space-y-3">
-                    <div className="flex justify-between">
-                      <span>Base Price:</span>
-                      <span>{formatCurrency(quote.pricing_breakdown?.base_calculation || quote.pricing?.base_price || 0)}</span>
-                    </div>
-                    {(quote.pricing_breakdown?.admin_fee || quote.pricing?.admin_fee) && (
-                      <div className="flex justify-between">
-                        <span>Admin Fee:</span>
-                        <span>{formatCurrency(quote.pricing_breakdown?.admin_fee || quote.pricing?.admin_fee || 0)}</span>
-                      </div>
-                    )}
-                    {(quote.pricing_breakdown?.tax_amount || quote.pricing?.tax_amount) && (
-                      <div className="flex justify-between">
-                        <span>Tax:</span>
-                        <span>{formatCurrency(quote.pricing_breakdown?.tax_amount || quote.pricing?.tax_amount || 0)}</span>
-                      </div>
-                    )}
-                    <Separator />
-                    <div className="flex justify-between font-bold text-lg">
-                      <span>Total:</span>
-                      <span>{formatCurrency(quote.pricing_breakdown?.total_price || quote.pricing?.total_price || 0)}</span>
-                    </div>
-                  </div>
-
-                  {/* Coverage Summary */}
-                  {quote.coverage_details && (
-                    <div className="pt-4 border-t">
-                      <h4 className="font-semibold mb-3">Coverage Details:</h4>
-                      <div className="space-y-2 text-sm">
-                        {Object.entries(quote.coverage_details).map(([key, value], index) => (
-                          <div key={index} className="flex justify-between">
-                            <span className="text-gray-600">
-                              {key.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())}:
-                            </span>
-                            <span className="font-medium">{value}</span>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Vehicle Information (for VSC) */}
-                  {activeTab === 'vsc' && vinInfo && (
-                    <div className="pt-4 border-t">
-                      <h4 className="font-semibold mb-3">Vehicle Information:</h4>
-                      <div className="space-y-2 text-sm">
-                        <div className="flex justify-between">
-                          <span className="text-gray-600">Vehicle:</span>
-                          <span className="font-medium">{vinInfo.year} {vinInfo.make} {vinInfo.model || 'Model not specified'}</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-gray-600">Mileage:</span>
-                          <span className="font-medium">{parseInt(vscForm.mileage).toLocaleString()} miles</span>
-                        </div>
-                        {vscForm.vin && (
-                          <div className="flex justify-between">
-                            <span className="text-gray-600">VIN:</span>
-                            <span className="font-medium text-xs">{vscForm.vin}</span>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            </div>
-          </div>
         </div>
-      </div>
     )
-  }
+    }
 
   return (
     <div className="min-h-screen py-12 bg-gray-50">
@@ -1413,9 +1775,25 @@ const QuotePage = () => {
           </div>
           <h1 className="text-4xl lg:text-5xl font-bold">Get Your Instant Quote</h1>
           <p className="text-xl text-muted-foreground max-w-3xl mx-auto">
-            Professional protection plans with competitive pricing. Get accurate quotes in seconds with our advanced rating engine.
+            {userType === 'reseller' 
+              ? 'Generate professional quotes with wholesale pricing to share with your customers'
+              : 'Professional protection plans with competitive pricing. Get accurate quotes in seconds with our advanced rating engine.'
+            }
           </p>
         </motion.div>
+
+        {/* User Type Indicator */}
+        <UserTypeIndicator />
+
+        {/* Customer Information Form (Resellers Only) */}
+          <CustomerInfoForm
+              userType={userType}
+              customerInfo={customerInfo}
+              setCustomerInfo={setCustomerInfo}
+              quoteNotes={quoteNotes}
+              setQuoteNotes={setQuoteNotes}
+              shareLoading={shareLoading}
+          />
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Quote Form */}
@@ -1424,7 +1802,10 @@ const QuotePage = () => {
               <CardHeader>
                 <CardTitle className="text-2xl">Quote Calculator</CardTitle>
                 <CardDescription>
-                  Select your protection type and get an instant quote with detailed pricing breakdown.
+                  {userType === 'reseller' 
+                    ? 'Generate quotes with wholesale pricing to share with your customers'
+                    : 'Select your protection type and get an instant quote with detailed pricing breakdown.'
+                  }
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -1768,135 +2149,7 @@ const QuotePage = () => {
           {/* Quote Results */}
           <div className="space-y-6">
             {quote ? (
-              <motion.div
-                initial={{ opacity: 0, x: 20 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ duration: 0.5 }}
-              >
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center space-x-2">
-                      <CheckCircle className="h-6 w-6 text-green-500" />
-                      <span>Your Quote</span>
-                    </CardTitle>
-                    <CardDescription>
-                      Professional protection plan pricing
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-6">
-                    <div className="text-center space-y-2">
-                      <div className="text-3xl font-bold price-highlight">
-                        {formatCurrency(quote.pricing_breakdown?.total_price || quote.pricing?.total_price || 0)}
-                      </div>
-                      <Badge variant="secondary">
-                        {(quote.coverage_details?.customer_type || quote.product_info?.customer_type) === 'wholesale' ? 'Wholesale Price' : 'Retail Price'}
-                      </Badge>
-                    </div>
-
-                    <div className="space-y-3">
-                      <div className="flex justify-between">
-                        <span>Base Price:</span>
-                        <span>{formatCurrency(quote.pricing_breakdown?.base_calculation || quote.pricing?.base_price || 0)}</span>
-                      </div>
-                      {(quote.pricing_breakdown?.admin_fee || quote.pricing?.admin_fee) && (
-                        <div className="flex justify-between">
-                          <span>Admin Fee:</span>
-                          <span>{formatCurrency(quote.pricing_breakdown?.admin_fee || quote.pricing?.admin_fee || 0)}</span>
-                        </div>
-                      )}
-                      {(quote.pricing_breakdown?.tax_amount || quote.pricing?.tax_amount) && (
-                        <div className="flex justify-between">
-                          <span>Tax:</span>
-                          <span>{formatCurrency(quote.pricing_breakdown?.tax_amount || quote.pricing?.tax_amount || 0)}</span>
-                        </div>
-                      )}
-                      {quote.discount && (
-                        <div className="flex justify-between text-green-600">
-                          <span>Discount:</span>
-                          <span>-{formatCurrency(quote.discount)}</span>
-                        </div>
-                      )}
-                      <div className="border-t pt-3 flex justify-between font-bold">
-                        <span>Total:</span>
-                        <span>{formatCurrency(quote.pricing_breakdown?.total_price || quote.pricing?.total_price || 0)}</span>
-                      </div>
-                    </div>
-
-                    {(quote.pricing_breakdown?.monthly_payment || quote.pricing?.monthly_payment || quote.payment_options?.monthly_payment) && (
-                      <div className="bg-primary/5 p-4 rounded-lg">
-                        <div className="text-center">
-                          <div className="text-sm text-muted-foreground">Monthly Payment</div>
-                          <div className="text-2xl font-bold text-primary">
-                            {formatCurrency(quote.pricing_breakdown?.monthly_payment || quote.pricing?.monthly_payment || quote.payment_options?.monthly_payment || 0)}
-                          </div>
-                        </div>
-                      </div>
-                    )}
-
-                    <div className="space-y-2">
-                      <Button className="w-full" onClick={handlePurchase}>
-                        <CreditCard className="h-4 w-4 mr-2" />
-                        Purchase This Plan
-                      </Button>
-                      <Button variant="outline" className="w-full">
-                        Save Quote
-                      </Button>
-                    </div>
-
-                    {quote.coverage_details && (
-                      <div className="space-y-2">
-                        <h4 className="font-semibold">Coverage Details:</h4>
-                        <ul className="text-sm space-y-1">
-                          {Object.entries(quote.coverage_details).map(([key, value], index) => (
-                            <li key={index} className="flex items-center space-x-2">
-                              <CheckCircle className="h-4 w-4 text-green-500" />
-                              <span>
-                                <strong>{key.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())}:</strong> {value}
-                              </span>
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
-                    )}
-
-                    {quote.product_info && (
-                      <div className="space-y-2">
-                        <h4 className="font-semibold">Product Information:</h4>
-                        <ul className="text-sm space-y-1">
-                          {Object.entries(quote.product_info).map(([key, value], index) => (
-                            <li key={index} className="flex items-center space-x-2">
-                              <CheckCircle className="h-4 w-4 text-green-500" />
-                              <span>
-                                <strong>{key.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())}:</strong> {value}
-                              </span>
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
-                    )}
-
-                    {activeTab === 'vsc' && vinInfo && (
-                      <div className="space-y-2 pt-4 border-t">
-                        <h4 className="font-semibold">Vehicle Information:</h4>
-                        <div className="text-sm space-y-1 bg-gray-50 p-3 rounded">
-                          <p><strong>VIN:</strong> {vscForm.vin}</p>
-                          <p><strong>Vehicle:</strong> {vinInfo.year} {vinInfo.make} {vinInfo.model || 'Model not specified'}</p>
-                          {vinInfo.trim && <p><strong>Trim:</strong> {vinInfo.trim}</p>}
-                          {vinInfo.engine && <p><strong>Engine:</strong> {vinInfo.engine}</p>}
-                          <p><strong>Mileage:</strong> {parseInt(vscForm.mileage).toLocaleString()} miles</p>
-                          {eligibilityCheck && (
-                            <p><strong>Eligibility:</strong> 
-                              <span className={eligibilityCheck.eligible ? 'text-green-600 font-medium' : 'text-red-600 font-medium'}>
-                                {eligibilityCheck.eligible ? ' Eligible' : ' Not Eligible'}
-                              </span>
-                            </p>
-                          )}
-                        </div>
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
-              </motion.div>
+              <QuoteResultsCard />
             ) : (
               <Card>
                 <CardContent className="pt-6">
@@ -1951,6 +2204,46 @@ const QuotePage = () => {
               </CardContent>
             </Card>
 
+            {/* Reseller Benefits Card */}
+            {userType === 'reseller' && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center space-x-2">
+                    <Building2 className="h-5 w-5" />
+                    <span>Reseller Benefits</span>
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <ul className="space-y-3 text-sm">
+                    <li className="flex items-center space-x-2">
+                      <CheckCircle className="h-4 w-4 text-green-500" />
+                      <span>Wholesale pricing with commission tracking</span>
+                    </li>
+                    <li className="flex items-center space-x-2">
+                      <CheckCircle className="h-4 w-4 text-green-500" />
+                      <span>Shareable quote links for easy customer access</span>
+                    </li>
+                    <li className="flex items-center space-x-2">
+                      <CheckCircle className="h-4 w-4 text-green-500" />
+                      <span>Automated email quote delivery</span>
+                    </li>
+                    <li className="flex items-center space-x-2">
+                      <CheckCircle className="h-4 w-4 text-green-500" />
+                      <span>Real-time commission calculations</span>
+                    </li>
+                    <li className="flex items-center space-x-2">
+                      <CheckCircle className="h-4 w-4 text-green-500" />
+                      <span>Customer payment processing handled</span>
+                    </li>
+                    <li className="flex items-center space-x-2">
+                      <CheckCircle className="h-4 w-4 text-green-500" />
+                      <span>Sales dashboard and analytics</span>
+                    </li>
+                  </ul>
+                </CardContent>
+              </Card>
+            )}
+
             {/* VIN Decoder Help Card */}
             {activeTab === 'vsc' && (
               <Card>
@@ -2002,6 +2295,17 @@ const QuotePage = () => {
                       <p className="text-muted-foreground text-xs">Visa, MasterCard, American Express, Discover</p>
                     </div>
                   </div>
+                  {userType === 'reseller' && (
+                    <div className="flex items-center space-x-3">
+                      <div className="bg-green-100 p-2 rounded">
+                        <Link2 className="h-4 w-4 text-green-600" />
+                      </div>
+                      <div>
+                        <p className="font-medium">Share & Pay Link</p>
+                        <p className="text-muted-foreground text-xs">Customer completes payment through secure link</p>
+                      </div>
+                    </div>
+                  )}
                 </div>
                 
                 <div className="bg-gray-50 p-3 rounded border mt-4">
@@ -2017,6 +2321,9 @@ const QuotePage = () => {
             </Card>
           </div>
         </div>
+
+        {/* Shareable Quote Dialog */}
+        <ShareableQuoteDialog />
       </div>
     </div>
   )
