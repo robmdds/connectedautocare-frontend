@@ -99,7 +99,7 @@ const SharedQuotePage = () => {
             setLoading(true);
             setError('');
 
-            const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:5000'}/quote/shared/${token}`);
+            const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://127.0.0.1:5000'}/quote/shared/${token}`);
             const result = await response.json();
 
             if (result.success) {
@@ -458,7 +458,7 @@ const SharedQuotePage = () => {
 
     const acceptSharedQuote = async (paymentData) => {
         try {
-            const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:5000'}/quote/${shareToken}/accept`, {
+            const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://127.0.0.1:5000'}/quote/${shareToken}/accept`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
