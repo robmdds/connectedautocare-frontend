@@ -1246,7 +1246,7 @@ const QuotePage = () => {
             <div className="space-y-3">
               <div className="flex justify-between">
                 <span>Base Price:</span>
-                <span>{formatCurrency(quote.pricing_breakdown?.base_calculation || quote.pricing?.base_price || 0)}</span>
+                <span>{formatCurrency(quote.pricing_breakdown?.base_calculation || quote.pricing?.subtotal_with_fee || 0)}</span>
               </div>
               {(quote.pricing_breakdown?.admin_fee || quote.pricing?.admin_fee) && (
                 <div className="flex justify-between">
@@ -1706,7 +1706,7 @@ if (showPayment && quote) {
                                 <div className="space-y-3">
                                     <div className="flex justify-between">
                                         <span>Base Price:</span>
-                                        <span>{formatCurrency(quote.pricing_breakdown?.base_calculation || quote.pricing?.base_price || 0)}</span>
+                                        <span>{formatCurrency(quote.pricing_breakdown?.base_calculation || quote.pricing?.subtotal_with_fee || 0)}</span>
                                     </div>
                                     {(quote.pricing_breakdown?.admin_fee || quote.pricing?.admin_fee) && (
                                         <div className="flex justify-between">
