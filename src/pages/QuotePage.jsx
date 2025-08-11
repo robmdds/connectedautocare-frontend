@@ -1155,16 +1155,6 @@ const QuotePage = () => {
                                 <p>{customerInfo.first_name} {customerInfo.last_name}</p>
                                 <p className="text-xs text-muted-foreground">{customerInfo.email}</p>
                             </div>
-                            <div>
-                                <span className="text-muted-foreground">Monthly Payment:</span>
-                                <p className="font-semibold">
-                                    {formatCurrency(
-                                        shareableQuote?.payment_options?.monthly_payment ||
-                                        shareableQuote?.pricing?.monthly_payment ||
-                                        0
-                                    )}
-                                </p>
-                            </div>
                         </div>
                     </div>
 
@@ -1245,7 +1235,7 @@ const QuotePage = () => {
 
             <div className="space-y-3">
               <div className="flex justify-between">
-                <span>Base Price:</span>
+                <span>Sub Total Price:</span>
                 <span>{formatCurrency(quote.pricing_breakdown?.base_calculation || quote.pricing?.subtotal_with_fee || 0)}</span>
               </div>
               {(quote.pricing_breakdown?.admin_fee || quote.pricing?.admin_fee) && (
@@ -1271,17 +1261,6 @@ const QuotePage = () => {
                 <span>{formatCurrency(quote.pricing_breakdown?.total_price || quote.pricing?.total_price || 0)}</span>
               </div>
             </div>
-
-            {(quote.pricing_breakdown?.monthly_payment || quote.pricing?.monthly_payment || quote.payment_options?.monthly_payment) && (
-              <div className="bg-primary/5 p-4 rounded-lg">
-                <div className="text-center">
-                  <div className="text-sm text-muted-foreground">Monthly Payment</div>
-                  <div className="text-2xl font-bold text-primary">
-                    {formatCurrency(quote.pricing_breakdown?.monthly_payment || quote.pricing?.monthly_payment || quote.payment_options?.monthly_payment || 0)}
-                  </div>
-                </div>
-              </div>
-            )}
 
             {/* Action buttons based on user type */}
             <div className="space-y-2">
