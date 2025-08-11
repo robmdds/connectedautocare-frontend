@@ -1881,21 +1881,30 @@ if (showPayment && quote) {
                           </Select>
                         </div>
 
-                        <div className="space-y-2">
-                          <Label htmlFor="hero-customer">Customer Type</Label>
-                          <Select 
-                            value={heroForm.customer_type} 
-                            onValueChange={(value) => setHeroForm({...heroForm, customer_type: value})}
-                          >
-                            <SelectTrigger>
-                              <SelectValue placeholder="Select customer type" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="retail">Retail Customer</SelectItem>
-                              <SelectItem value="wholesale">Wholesale/Reseller</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </div>
+                          <div className="space-y-2">
+                              <Label htmlFor="hero-customer">Customer Type</Label>
+                              <Select
+                                  value={heroForm.customer_type}
+                                  onValueChange={(value) => setHeroForm({...heroForm, customer_type: value})}
+                                  disabled={isReseller} // Disable for resellers since they only have wholesale
+                              >
+                                  <SelectTrigger>
+                                      <SelectValue placeholder="Select customer type" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                      {isReseller ? (
+                                          <SelectItem value="wholesale">Wholesale/Reseller</SelectItem>
+                                      ) : (
+                                          <SelectItem value="retail">Retail Customer</SelectItem>
+                                      )}
+                                  </SelectContent>
+                              </Select>
+                              {isReseller && (
+                                  <p className="text-xs text-muted-foreground">
+                                      Resellers automatically receive wholesale pricing
+                                  </p>
+                              )}
+                          </div>
                       </div>
 
                       <Button type="submit" className="w-full" disabled={loading}>
