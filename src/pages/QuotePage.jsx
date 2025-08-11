@@ -1155,16 +1155,6 @@ const QuotePage = () => {
                                 <p>{customerInfo.first_name} {customerInfo.last_name}</p>
                                 <p className="text-xs text-muted-foreground">{customerInfo.email}</p>
                             </div>
-                            <div>
-                                <span className="text-muted-foreground">Monthly Payment:</span>
-                                <p className="font-semibold">
-                                    {formatCurrency(
-                                        shareableQuote?.payment_options?.monthly_payment ||
-                                        shareableQuote?.pricing?.monthly_payment ||
-                                        0
-                                    )}
-                                </p>
-                            </div>
                         </div>
                     </div>
 
@@ -1245,7 +1235,7 @@ const QuotePage = () => {
 
             <div className="space-y-3">
               <div className="flex justify-between">
-                <span>Base Price:</span>
+                <span>Sub Total Price:</span>
                 <span>{formatCurrency(quote.pricing_breakdown?.base_calculation || quote.pricing?.subtotal_with_fee || 0)}</span>
               </div>
               {(quote.pricing_breakdown?.admin_fee || quote.pricing?.admin_fee) && (
