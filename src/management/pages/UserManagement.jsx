@@ -72,6 +72,7 @@ export default function UserManagement() {
       }
 
       const data = await response.json();
+      console.log(data);
       const usersData = data.data?.users || data.users || data || [];
       setUsers(usersData);
       
