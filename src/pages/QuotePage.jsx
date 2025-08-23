@@ -1789,10 +1789,32 @@ if (showPayment && quote) {
               </CardHeader>
               <CardContent>
                 <Tabs value={activeTab} onValueChange={setActiveTab}>
-                  <TabsList className="grid w-full grid-cols-2">
-                    <TabsTrigger value="hero">Hero Products</TabsTrigger>
-                    <TabsTrigger value="vsc">Vehicle Service Contracts</TabsTrigger>
-                  </TabsList>
+                    <TabsList className="grid w-full grid-cols-2 h-14 p-1 bg-gray-100 rounded-lg border shadow-sm">
+                        <TabsTrigger
+                            value="hero"
+                            className="relative h-12 font-bold text-base transition-all duration-200 ease-in-out
+                 data-[state=active]:bg-white data-[state=active]:text-primary
+                 data-[state=active]:shadow-md data-[state=active]:border
+                 data-[state=inactive]:text-gray-600 data-[state=inactive]:hover:text-gray-800
+                 data-[state=inactive]:hover:bg-gray-50
+                 rounded-md flex items-center justify-center gap-2"
+                        >
+                            <Home className="h-5 w-5" />
+                            <span>Hero Products</span>
+                        </TabsTrigger>
+                        <TabsTrigger
+                            value="vsc"
+                            className="relative h-12 font-bold text-base transition-all duration-200 ease-in-out
+                 data-[state=active]:bg-white data-[state=active]:text-primary
+                 data-[state=active]:shadow-md data-[state=active]:border
+                 data-[state=inactive]:text-gray-600 data-[state=inactive]:hover:text-gray-800
+                 data-[state=inactive]:hover:bg-gray-50
+                 rounded-md flex items-center justify-center gap-2"
+                        >
+                            <Car className="h-5 w-5" />
+                            <span>Vehicle Service Contracts</span>
+                        </TabsTrigger>
+                    </TabsList>
 
                   {/* Hero Products Tab */}
                   <TabsContent value="hero" className="space-y-6">
