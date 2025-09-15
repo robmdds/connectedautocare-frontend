@@ -2156,7 +2156,10 @@ if (showPayment && quote) {
             </Card>
           </div>
         </div>
-
+        
+        <div className="space-y-6">
+          
+        </div>
           {/* Quote Results */}
           <div className="space-y-6">
             {quote ? (
