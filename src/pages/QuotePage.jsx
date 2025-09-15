@@ -1740,606 +1740,616 @@ if (showPayment && quote) {
     }
 
   return (
-    <div className="min-h-screen py-12 bg-gray-50">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        {/* Header */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8 }}
-          className="text-center space-y-4 mb-12"
-        >
-          <div className="bg-primary/10 p-3 rounded-full w-fit mx-auto">
-            <Calculator className="h-8 w-8 text-primary" />
-          </div>
-          <h1 className="text-4xl lg:text-5xl font-bold">Get Your Instant Quote</h1>
-          <p className="text-xl text-muted-foreground max-w-3xl mx-auto">
-            {userType === 'reseller' 
-              ? 'Generate professional quotes with wholesale pricing to share with your customers'
-              : 'Professional protection plans with competitive pricing. Get accurate quotes in seconds with our advanced rating engine.'
-            }
-          </p>
-        </motion.div>
+  <div className="min-h-screen py-12 bg-gray-50">
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      {/* Header */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.8 }}
+        className="text-center space-y-4 mb-12"
+      >
+        <div className="bg-primary/10 p-3 rounded-full w-fit mx-auto">
+          <Calculator className="h-8 w-8 text-primary" />
+        </div>
+        <h1 className="text-4xl lg:text-5xl font-bold">Get Your Instant Quote</h1>
+        <p className="text-xl text-muted-foreground max-w-3xl mx-auto">
+          {userType === 'reseller'
+            ? 'Generate professional quotes with wholesale pricing to share with your customers'
+            : 'Professional protection plans with competitive pricing. Get accurate quotes in seconds with our advanced rating engine.'
+          }
+        </p>
+      </motion.div>
 
-        {/* User Type Indicator */}
-        <UserTypeIndicator />
+      {/* User Type Indicator */}
+      <UserTypeIndicator />
 
-        {/* Customer Information Form (Resellers Only) */}
-          <CustomerInfoForm
-              userType={userType}
-              customerInfo={customerInfo}
-              setCustomerInfo={setCustomerInfo}
-              quoteNotes={quoteNotes}
-              setQuoteNotes={setQuoteNotes}
-              shareLoading={shareLoading}
-          />
+      {/* Customer Information Form (Resellers Only) */}
+      <CustomerInfoForm
+        userType={userType}
+        customerInfo={customerInfo}
+        setCustomerInfo={setCustomerInfo}
+        quoteNotes={quoteNotes}
+        setQuoteNotes={setQuoteNotes}
+        shareLoading={shareLoading}
+      />
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Quote Form */}
-          <div className="lg:col-span-2">
-            <Card className="quote-form">
-              <CardHeader>
-                <CardTitle className="text-2xl">Quote Calculator</CardTitle>
-                <CardDescription>
-                  {userType === 'reseller' 
-                    ? 'Generate quotes with wholesale pricing to share with your customers'
-                    : 'Select your protection type and get an instant quote with detailed pricing breakdown.'
-                  }
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <Tabs value={activeTab} onValueChange={setActiveTab}>
-                  <TabsList className="grid w-full grid-cols-1 sm:grid-cols-2 h-14 p-1 bg-gray-100 rounded-lg border shadow-sm">
-                    <TabsTrigger
-                      value="hero"
-                      className="relative h-12 font-bold text-sm sm:text-base transition-all duration-200 ease-in-out
-                      data-[state=active]:bg-white data-[state=active]:text-primary
-                      data-[state=active]:shadow-md data-[state=active]:border
-                      data-[state=inactive]:text-gray-600 data-[state=inactive]:hover:text-gray-800
-                      data-[state=inactive]:hover:bg-gray-50
-                      rounded-md flex items-center justify-center gap-2 w-full"
-                    >
-                      <Home className="h-5 w-5" />
-                      <span>Hero Products</span>
-                    </TabsTrigger>
-                    <TabsTrigger
-                      value="vsc"
-                      className="relative h-12 font-bold text-sm sm:text-base transition-all duration-200 ease-in-out
-                      data-[state=active]:bg-white data-[state=active]:text-primary
-                      data-[state=active]:shadow-md data-[state=active]:border
-                      data-[state=inactive]:text-gray-600 data-[state=inactive]:hover:text-gray-800
-                      data-[state=inactive]:hover:bg-gray-50
-                      rounded-md flex items-center justify-center gap-2 w-full"
-                    >
-                      <Car className="h-5 w-5" />
-                      <span>Vehicle Service Contracts</span>
-                    </TabsTrigger>
-                  </TabsList>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        {/* Quote Form */}
+        <div className="lg:col-span-2">
+          <Card className="quote-form">
+            <CardHeader>
+              <CardTitle className="text-2xl">Quote Calculator</CardTitle>
+              <CardDescription>
+                {userType === 'reseller'
+                  ? 'Generate quotes with wholesale pricing to share with your customers'
+                  : 'Select your protection type and get an instant quote with detailed pricing breakdown.'
+                }
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Tabs value={activeTab} onValueChange={setActiveTab}>
+                <TabsList className="grid w-full grid-cols-1 sm:grid-cols-2 h-14 p-1 bg-gray-100 rounded-lg border shadow-sm">
+                  <TabsTrigger
+                    value="hero"
+                    className="relative h-12 font-bold text-sm sm:text-base transition-all duration-200 ease-in-out
+                    data-[state=active]:bg-white data-[state=active]:text-primary
+                    data-[state=active]:shadow-md data-[state=active]:border
+                    data-[state=inactive]:text-gray-600 data-[state=inactive]:hover:text-gray-800
+                    data-[state=inactive]:hover:bg-gray-50
+                    rounded-md flex items-center justify-center gap-2 w-full"
+                  >
+                    <Home className="h-5 w-5" />
+                    <span>Hero Products</span>
+                  </TabsTrigger>
+                  <TabsTrigger
+                    value="vsc"
+                    className="relative h-12 font-bold text-sm sm:text-base transition-all duration-200 ease-in-out
+                    data-[state=active]:bg-white data-[state=active]:text-primary
+                    data-[state=active]:shadow-md data-[state=active]:border
+                    data-[state=inactive]:text-gray-600 data-[state=inactive]:hover:text-gray-800
+                    data-[state=inactive]:hover:bg-gray-50
+                    rounded-md flex items-center justify-center gap-2 w-full"
+                  >
+                    <Car className="h-5 w-5" />
+                    <span>Vehicle Service Contracts</span>
+                  </TabsTrigger>
+                </TabsList>
 
-                  {/* Hero Products Tab */}
-                  <TabsContent value="hero" className="mt-6 space-y-6">
-                    <form onSubmit={handleHeroSubmit} className="space-y-6">
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div className="space-y-2">
-                          <Label htmlFor="hero-product">Product Type</Label>
-                          <Select 
-                            value={heroForm.product_type} 
-                            onValueChange={(value) => setHeroForm({...heroForm, product_type: value})}
-                          >
-                            <SelectTrigger>
-                              <SelectValue placeholder="Select a product" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {heroProductsLoading ? (
-                                <SelectItem value="loading" disabled>Loading products...</SelectItem>
-                              ) : (
-                                heroProducts.map((product) => (
-                                  <SelectItem key={product.value} value={product.value}>
-                                    <div className="flex items-center space-x-2">
-                                      <product.icon className="h-4 w-4" />
-                                      <span>{product.label}</span>
-                                    </div>
-                                  </SelectItem>
-                                ))
-                              )}
-                            </SelectContent>
-                          </Select>
-                        </div>
-
-                        <div className="space-y-2">
-                          <Label htmlFor="hero-term">Term (Years)</Label>
-                          <Select 
-                            value={heroForm.term_years} 
-                            onValueChange={(value) => setHeroForm({...heroForm, term_years: value})}
-                          >
-                            <SelectTrigger>
-                              <SelectValue placeholder="Select term" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="1">1 Year</SelectItem>
-                              <SelectItem value="2">2 Years</SelectItem>
-                              <SelectItem value="3">3 Years</SelectItem>
-                              <SelectItem value="4">4 Years</SelectItem>
-                              <SelectItem value="5">5 Years</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </div>
-
-                        <div className="space-y-2">
-                          <Label htmlFor="hero-coverage">Coverage Limit</Label>
-                          <Select 
-                            value={heroForm.coverage_limit} 
-                            onValueChange={(value) => setHeroForm({...heroForm, coverage_limit: value})}
-                          >
-                            <SelectTrigger>
-                              <SelectValue placeholder="Select coverage" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="500">$500</SelectItem>
-                              <SelectItem value="1000">$1,000</SelectItem>
-                              <SelectItem value="unlimited">Unlimited</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </div>
-
-                        <div className="space-y-2">
-                          <Label htmlFor="hero-customer">Customer Type</Label>
-                          <Select
-                            value={heroForm.customer_type}
-                            onValueChange={(value) => setHeroForm({...heroForm, customer_type: value})}
-                            disabled={isReseller} // Disable for resellers since they only have wholesale
-                          >
-                            <SelectTrigger>
-                              <SelectValue placeholder="Select customer type" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {isReseller ? (
-                                <SelectItem value="wholesale">Wholesale/Reseller</SelectItem>
-                              ) : (
-                                <SelectItem value="retail">Retail Customer</SelectItem>
-                              )}
-                            </SelectContent>
-                          </Select>
-                          {isReseller && (
-                            <p className="text-xs text-muted-foreground">
-                              Resellers automatically receive wholesale pricing
-                            </p>
-                          )}
-                        </div>
-                      </div>
-
-                      <Button type="submit" className="w-full" disabled={loading}>
-                        {loading ? 'Calculating...' : 'Get Hero Products Quote'}
-                      </Button>
-                    </form>
-                  </TabsContent>
-
-                  {/* Enhanced VSC Tab with VIN Auto-Detection */}
-                  <TabsContent value="vsc" className="mt-6 space-y-6">
-                    <form onSubmit={handleVSCSubmit} className="space-y-6">
-                      {/* VIN Input Section */}
-                      <div className="space-y-4 p-4 bg-blue-50 rounded-lg border">
-                        <div className="flex items-center space-x-2">
-                          <Search className="h-5 w-5 text-blue-600" />
-                          <Label className="text-lg font-semibold text-blue-900">VIN Auto-Detection</Label>
-                        </div>
-                        
-                        <div className="space-y-2">
-                          <Label htmlFor="vsc-vin">Vehicle Identification Number (VIN)</Label>
-                          <div className="relative">
-                            <Input
-                              id="vsc-vin"
-                              placeholder="Enter 17-character VIN"
-                              value={vscForm.vin}
-                              onChange={(e) => setVscForm({...vscForm, vin: e.target.value.toUpperCase()})}
-                              maxLength={17}
-                              className={`${vinError ? 'border-red-500' : ''} ${vinInfo ? 'border-green-500' : ''}`}
-                            />
-                            {vinDecoding && (
-                              <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
-                                <Loader className="h-4 w-4 animate-spin text-blue-600" />
-                              </div>
-                            )}
-                          </div>
-                          
-                          {vinError && (
-                            <div className="flex items-center space-x-2 text-red-600 text-sm">
-                              <AlertCircle className="h-4 w-4" />
-                              <span>{vinError}</span>
-                            </div>
-                          )}
-                          
-                          {vinInfo && (
-                            <div className="bg-green-50 p-3 rounded border border-green-200">
-                              <div className="flex items-center space-x-2 mb-2">
-                                <CheckCircle className="h-4 w-4 text-green-600" />
-                                <span className="text-green-800 font-medium">VIN Decoded Successfully</span>
-                              </div>
-                              <div className="text-sm space-y-1">
-                                <p><strong>Make:</strong> {vinInfo.make}</p>
-                                {vinInfo.model && <p><strong>Model:</strong> {vinInfo.model}</p>}
-                                <p><strong>Year:</strong> {vinInfo.year}</p>
-                                {vinInfo.trim && <p><strong>Trim:</strong> {vinInfo.trim}</p>}
-                                {vinInfo.engine && <p><strong>Engine:</strong> {vinInfo.engine}</p>}
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-
-                      {/* Vehicle Information Fields */}
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div className="space-y-2">
-                          <Label htmlFor="vsc-make">
-                            Vehicle Make
-                            {vscForm.auto_populated && <Badge variant="secondary" className="ml-2 text-xs">Auto-filled</Badge>}
-                          </Label>
-                          <Select 
-                            value={vscForm.make} 
-                            onValueChange={(value) => setVscForm({...vscForm, make: value})}
-                          >
-                            <SelectTrigger className={vscForm.auto_populated ? 'bg-green-50 border-green-300' : ''}>
-                              <SelectValue placeholder="Select make" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {vehicleMakes.map((make) => (
-                                <SelectItem key={make} value={make}>
-                                  {make}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </div>
-
-                        <div className="space-y-2">
-                          <Label htmlFor="vsc-model">
-                            Vehicle Model
-                            {vscForm.auto_populated && vinInfo?.model && <Badge variant="secondary" className="ml-2 text-xs">Auto-filled</Badge>}
-                          </Label>
-                          <Input
-                            id="vsc-model"
-                            placeholder="Enter model"
-                            value={vscForm.model}
-                            onChange={(e) => setVscForm({...vscForm, model: e.target.value})}
-                            className={vscForm.auto_populated && vinInfo?.model ? 'bg-green-50 border-green-300' : ''}
-                          />
-                        </div>
-
-                        <div className="space-y-2">
-                          <Label htmlFor="vsc-year">
-                            Vehicle Year
-                            {vscForm.auto_populated && <Badge variant="secondary" className="ml-2 text-xs">Auto-filled</Badge>}
-                          </Label>
-                          <Input
-                            id="vsc-year"
-                            type="number"
-                            placeholder="2020"
-                            min="1990"
-                            max={new Date().getFullYear() + 1}
-                            value={vscForm.year}
-                            onChange={(e) => setVscForm({...vscForm, year: e.target.value})}
-                            className={vscForm.auto_populated ? 'bg-green-50 border-green-300' : ''}
-                          />
-                        </div>
-
-                        <div className="space-y-2">
-                          <Label htmlFor="vsc-mileage">
-                            Current Mileage
-                            <span className="text-red-500 ml-1">*</span>
-                            <span className="text-sm text-muted-foreground ml-1">(Required for eligibility)</span>
-                          </Label>
-                          <Input
-                            id="vsc-mileage"
-                            type="number"
-                            placeholder="50000"
-                            min="0"
-                            max="500000"
-                            value={vscForm.mileage}
-                            onChange={(e) => setVscForm({...vscForm, mileage: e.target.value})}
-                            className="border-blue-300 focus:border-blue-500"
-                          />
-                        </div>
-
-                        <div className="space-y-2">
-                          <Label htmlFor="vsc-coverage">Coverage Level</Label>
-                          <Select 
-                            value={vscForm.coverage_level} 
-                            onValueChange={(value) => setVscForm({...vscForm, coverage_level: value})}
-                          >
-                            <SelectTrigger>
-                              <SelectValue placeholder="Select coverage" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="silver">Silver Coverage</SelectItem>
-                              <SelectItem value="gold">Gold Coverage</SelectItem>
-                              <SelectItem value="platinum">Platinum Coverage</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </div>
-
-                        <div className="space-y-2">
-                          <Label htmlFor="vsc-term">Term (Months)</Label>
-                          <Select 
-                            value={vscForm.term_months} 
-                            onValueChange={(value) => setVscForm({...vscForm, term_months: value})}
-                          >
-                            <SelectTrigger>
-                              <SelectValue placeholder="Select term" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="12">12 Months</SelectItem>
-                              <SelectItem value="24">24 Months</SelectItem>
-                              <SelectItem value="36">36 Months</SelectItem>
-                              <SelectItem value="48">48 Months</SelectItem>
-                              <SelectItem value="60">60 Months</SelectItem>
-                              <SelectItem value="72">72 Months</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </div>
-                      </div>
-
-                      {/* Eligibility Check Results */}
-                      {vinInfo && vscForm.mileage && eligibilityCheck && (
-                        <div className={`p-4 rounded-lg border ${
-                          eligibilityCheck.eligible 
-                            ? 'bg-green-50 border-green-200' 
-                            : 'bg-red-50 border-red-200'
-                        }`}>
-                          <div className="flex items-center space-x-2 mb-2">
-                            {eligibilityCheck.eligible ? (
-                              <CheckCircle className="h-5 w-5 text-green-600" />
+                {/* Hero Products Tab */}
+                <TabsContent value="hero" className="mt-6 space-y-6">
+                  <form onSubmit={handleHeroSubmit} className="space-y-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <div className="space-y-2">
+                        <Label htmlFor="hero-product">Product Type</Label>
+                        <Select
+                          value={heroForm.product_type}
+                          onValueChange={(value) => setHeroForm({ ...heroForm, product_type: value })}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select a product" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {heroProductsLoading ? (
+                              <SelectItem value="loading" disabled>
+                                Loading products...
+                              </SelectItem>
                             ) : (
-                              <AlertCircle className="h-5 w-5 text-red-600" />
+                              heroProducts.map((product) => (
+                                <SelectItem key={product.value} value={product.value}>
+                                  <div className="flex items-center space-x-2">
+                                    <product.icon className="h-4 w-4" />
+                                    <span>{product.label}</span>
+                                  </div>
+                                </SelectItem>
+                              ))
                             )}
-                            <span className={`font-medium ${
-                              eligibilityCheck.eligible ? 'text-green-800' : 'text-red-800'
-                            }`}>
-                              {eligibilityCheck.eligible ? 'Vehicle Eligible for VSC' : 'Vehicle Not Eligible for VSC'}
-                            </span>
-                          </div>
-                          
-                          {eligibilityCheck.restrictions.length > 0 && (
-                            <div className="mb-2">
-                              <p className="text-red-800 font-medium text-sm mb-1">Restrictions:</p>
-                              <ul className="text-red-700 text-sm space-y-1">
-                                {eligibilityCheck.restrictions.map((restriction, index) => (
-                                  <li key={index}>• {restriction}</li>
-                                ))}
-                              </ul>
-                            </div>
-                          )}
-                          
-                          {eligibilityCheck.warnings.length > 0 && (
-                            <div>
-                              <p className="text-yellow-800 font-medium text-sm mb-1">Considerations:</p>
-                              <ul className="text-yellow-700 text-sm space-y-1">
-                                {eligibilityCheck.warnings.map((warning, index) => (
-                                  <li key={index}>• {warning}</li>
-                                ))}
-                              </ul>
-                            </div>
-                          )}
-                        </div>
-                      )}
+                          </SelectContent>
+                        </Select>
+                      </div>
 
-                      {/* Mileage reminder if VIN decoded but no mileage */}
-                      {vinInfo && !vscForm.mileage && (
-                        <div className="p-4 rounded-lg border border-yellow-200 bg-yellow-50">
-                          <div className="flex items-center space-x-2">
-                            <AlertCircle className="h-5 w-5 text-yellow-600" />
-                            <span className="text-yellow-800 font-medium">Enter Current Mileage</span>
-                          </div>
-                          <p className="text-yellow-700 text-sm mt-1">
-                            Please enter your vehicle's current mileage to check eligibility for our service contract.
+                      <div className="space-y-2">
+                        <Label htmlFor="hero-term">Term (Years)</Label>
+                        <Select
+                          value={heroForm.term_years}
+                          onValueChange={(value) => setHeroForm({ ...heroForm, term_years: value })}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select term" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="1">1 Year</SelectItem>
+                            <SelectItem value="2">2 Years</SelectItem>
+                            <SelectItem value="3">3 Years</SelectItem>
+                            <SelectItem value="4">4 Years</SelectItem>
+                            <SelectItem value="5">5 Years</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="hero-coverage">Coverage Limit</Label>
+                        <Select
+                          value={heroForm.coverage_limit}
+                          onValueChange={(value) => setHeroForm({ ...heroForm, coverage_limit: value })}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select coverage" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="500">$500</SelectItem>
+                            <SelectItem value="1000">$1,000</SelectItem>
+                            <SelectItem value="unlimited">Unlimited</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="hero-customer">Customer Type</Label>
+                        <Select
+                          value={heroForm.customer_type}
+                          onValueChange={(value) => setHeroForm({ ...heroForm, customer_type: value })}
+                          disabled={isReseller} // Disable for resellers since they only have wholesale
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select customer type" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {isReseller ? (
+                              <SelectItem value="wholesale">Wholesale/Reseller</SelectItem>
+                            ) : (
+                              <SelectItem value="retail">Retail Customer</SelectItem>
+                            )}
+                          </SelectContent>
+                        </Select>
+                        {isReseller && (
+                          <p className="text-xs text-muted-foreground">
+                            Resellers automatically receive wholesale pricing
                           </p>
+                        )}
+                      </div>
+                    </div>
+
+                    <Button type="submit" className="w-full" disabled={loading}>
+                      {loading ? 'Calculating...' : 'Get Hero Products Quote'}
+                    </Button>
+                  </form>
+                </TabsContent>
+
+                {/* Enhanced VSC Tab with VIN Auto-Detection */}
+                <TabsContent value="vsc" className="mt-6 space-y-6">
+                  <form onSubmit={handleVSCSubmit} className="space-y-6">
+                    {/* VIN Input Section */}
+                    <div className="space-y-4 p-4 bg-blue-50 rounded-lg border">
+                      <div className="flex items-center space-x-2">
+                        <Search className="h-5 w-5 text-blue-600" />
+                        <Label className="text-lg font-semibold text-blue-900">VIN Auto-Detection</Label>
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="vsc-vin">Vehicle Identification Number (VIN)</Label>
+                        <div className="relative">
+                          <Input
+                            id="vsc-vin"
+                            placeholder="Enter 17-character VIN"
+                            value={vscForm.vin}
+                            onChange={(e) => setVscForm({ ...vscForm, vin: e.target.value.toUpperCase() })}
+                            maxLength={17}
+                            className={`${vinError ? 'border-red-500' : ''} ${vinInfo ? 'border-green-500' : ''}`}
+                          />
+                          {vinDecoding && (
+                            <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+                              <Loader className="h-4 w-4 animate-spin text-blue-600" />
+                            </div>
+                          )}
                         </div>
-                      )}
 
-                      <Button 
-                        type="submit" 
-                        className="w-full" 
-                        disabled={loading || (eligibilityCheck && !eligibilityCheck.eligible)}
+                        {vinError && (
+                          <div className="flex items-center space-x-2 text-red-600 text-sm">
+                            <AlertCircle className="h-4 w-4" />
+                            <span>{vinError}</span>
+                          </div>
+                        )}
+
+                        {vinInfo && (
+                          <div className="bg-green-50 p-3 rounded border border-green-200">
+                            <div className="flex items-center space-x-2 mb-2">
+                              <CheckCircle className="h-4 w-4 text-green-600" />
+                              <span className="text-green-800 font-medium">VIN Decoded Successfully</span>
+                            </div>
+                            <div className="text-sm space-y-1">
+                              <p>
+                                <strong>Make:</strong> {vinInfo.make}
+                              </p>
+                              {vinInfo.model && <p>
+                                <strong>Model:</strong> {vinInfo.model}
+                              </p>}
+                              <p>
+                                <strong>Year:</strong> {vinInfo.year}
+                              </p>
+                              {vinInfo.trim && <p>
+                                <strong>Trim:</strong> {vinInfo.trim}
+                              </p>}
+                              {vinInfo.engine && <p>
+                                <strong>Engine:</strong> {vinInfo.engine}
+                              </p>}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Vehicle Information Fields */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <div className="space-y-2">
+                        <Label htmlFor="vsc-make">
+                          Vehicle Make
+                          {vscForm.auto_populated && <Badge variant="secondary" className="ml-2 text-xs">Auto-filled</Badge>}
+                        </Label>
+                        <Select
+                          value={vscForm.make}
+                          onValueChange={(value) => setVscForm({ ...vscForm, make: value })}
+                        >
+                          <SelectTrigger className={vscForm.auto_populated ? 'bg-green-50 border-green-300' : ''}>
+                            <SelectValue placeholder="Select make" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {vehicleMakes.map((make) => (
+                              <SelectItem key={make} value={make}>
+                                {make}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="vsc-model">
+                          Vehicle Model
+                          {vscForm.auto_populated && vinInfo?.model && <Badge variant="secondary" className="ml-2 text-xs">Auto-filled</Badge>}
+                        </Label>
+                        <Input
+                          id="vsc-model"
+                          placeholder="Enter model"
+                          value={vscForm.model}
+                          onChange={(e) => setVscForm({ ...vscForm, model: e.target.value })}
+                          className={vscForm.auto_populated && vinInfo?.model ? 'bg-green-50 border-green-300' : ''}
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="vsc-year">
+                          Vehicle Year
+                          {vscForm.auto_populated && <Badge variant="secondary" className="ml-2 text-xs">Auto-filled</Badge>}
+                        </Label>
+                        <Input
+                          id="vsc-year"
+                          type="number"
+                          placeholder="2020"
+                          min="1990"
+                          max={new Date().getFullYear() + 1}
+                          value={vscForm.year}
+                          onChange={(e) => setVscForm({ ...vscForm, year: e.target.value })}
+                          className={vscForm.auto_populated ? 'bg-green-50 border-green-300' : ''}
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="vsc-mileage">
+                          Current Mileage
+                          <span className="text-red-500 ml-1">*</span>
+                          <span className="text-sm text-muted-foreground ml-1">(Required for eligibility)</span>
+                        </Label>
+                        <Input
+                          id="vsc-mileage"
+                          type="number"
+                          placeholder="50000"
+                          min="0"
+                          max="500000"
+                          value={vscForm.mileage}
+                          onChange={(e) => setVscForm({ ...vscForm, mileage: e.target.value })}
+                          className="border-blue-300 focus:border-blue-500"
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="vsc-coverage">Coverage Level</Label>
+                        <Select
+                          value={vscForm.coverage_level}
+                          onValueChange={(value) => setVscForm({ ...vscForm, coverage_level: value })}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select coverage" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="silver">Silver Coverage</SelectItem>
+                            <SelectItem value="gold">Gold Coverage</SelectItem>
+                            <SelectItem value="platinum">Platinum Coverage</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="vsc-term">Term (Months)</Label>
+                        <Select
+                          value={vscForm.term_months}
+                          onValueChange={(value) => setVscForm({ ...vscForm, term_months: value })}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select term" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="12">12 Months</SelectItem>
+                            <SelectItem value="24">24 Months</SelectItem>
+                            <SelectItem value="36">36 Months</SelectItem>
+                            <SelectItem value="48">48 Months</SelectItem>
+                            <SelectItem value="60">60 Months</SelectItem>
+                            <SelectItem value="72">72 Months</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+
+                    {/* Eligibility Check Results */}
+                    {vinInfo && vscForm.mileage && eligibilityCheck && (
+                      <div
+                        className={`p-4 rounded-lg border ${
+                          eligibilityCheck.eligible ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'
+                        }`}
                       >
-                        {loading ? 'Calculating...' : 'Get VSC Quote'}
-                      </Button>
-                    </form>
-                  </TabsContent>
-                </Tabs>
+                        <div className="flex items-center space-x-2 mb-2">
+                          {eligibilityCheck.eligible ? (
+                            <CheckCircle className="h-5 w-5 text-green-600" />
+                          ) : (
+                            <AlertCircle className="h-5 w-5 text-red-600" />
+                          )}
+                          <span
+                            className={`font-medium ${
+                              eligibilityCheck.eligible ? 'text-green-800' : 'text-red-800'
+                            }`}
+                          >
+                            {eligibilityCheck.eligible ? 'Vehicle Eligible for VSC' : 'Vehicle Not Eligible for VSC'}
+                          </span>
+                        </div>
 
-                {/* Error Display */}
-                {error && (
-                  <div className="bg-red-50 border border-red-200 rounded-lg p-4 mt-6">
-                    <p className="text-red-600">{error}</p>
+                        {eligibilityCheck.restrictions.length > 0 && (
+                          <div className="mb-2">
+                            <p className="text-red-800 font-medium text-sm mb-1">Restrictions:</p>
+                            <ul className="text-red-700 text-sm space-y-1">
+                              {eligibilityCheck.restrictions.map((restriction, index) => (
+                                <li key={index}>• {restriction}</li>
+                              ))}
+                            </ul>
+                          </div>
+                        )}
+
+                        {eligibilityCheck.warnings.length > 0 && (
+                          <div>
+                            <p className="text-yellow-800 font-medium text-sm mb-1">Considerations:</p>
+                            <ul className="text-yellow-700 text-sm space-y-1">
+                              {eligibilityCheck.warnings.map((warning, index) => (
+                                <li key={index}>• {warning}</li>
+                              ))}
+                            </ul>
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Mileage reminder if VIN decoded but no mileage */}
+                    {vinInfo && !vscForm.mileage && (
+                      <div className="p-4 rounded-lg border border-yellow-200 bg-yellow-50">
+                        <div className="flex items-center space-x-2">
+                          <AlertCircle className="h-5 w-5 text-yellow-600" />
+                          <span className="text-yellow-800 font-medium">Enter Current Mileage</span>
+                        </div>
+                        <p className="text-yellow-700 text-sm mt-1">
+                          Please enter your vehicle's current mileage to check eligibility for our service contract.
+                        </p>
+                      </div>
+                    )}
+
+                    <Button
+                      type="submit"
+                      className="w-full"
+                      disabled={loading || (eligibilityCheck && !eligibilityCheck.eligible)}
+                    >
+                      {loading ? 'Calculating...' : 'Get VSC Quote'}
+                    </Button>
+                  </form>
+                </TabsContent>
+              </Tabs>
+
+              {/* Error Display */}
+              {error && (
+                <div className="bg-red-50 border border-red-200 rounded-lg p-4 mt-6">
+                  <p className="text-red-600">{error}</p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Quote Results and Additional Cards */}
+        <div className="space-y-6 lg:col-span-1">
+          {quote ? (
+            <QuoteResultsCard />
+          ) : (
+            <Card>
+              <CardContent className="pt-6">
+                <div className="text-center space-y-4">
+                  <DollarSign className="h-12 w-12 text-muted-foreground mx-auto" />
+                  <div>
+                    <h3 className="font-semibold">Get Your Quote</h3>
+                    <p className="text-sm text-muted-foreground">
+                      {activeTab === 'vsc'
+                        ? 'Enter your VIN or vehicle details to see personalized pricing'
+                        : 'Fill out the form to see your personalized pricing'}
+                    </p>
                   </div>
-                )}
+                </div>
               </CardContent>
             </Card>
-          </div>
-        </div>
-        
-        <div className="space-y-6">
-          
-        </div>
-          {/* Quote Results */}
-          <div className="space-y-6">
-            {quote ? (
-              <QuoteResultsCard />
-            ) : (
-              <Card>
-                <CardContent className="pt-6">
-                  <div className="text-center space-y-4">
-                    <DollarSign className="h-12 w-12 text-muted-foreground mx-auto" />
-                    <div>
-                      <h3 className="font-semibold">Get Your Quote</h3>
-                      <p className="text-sm text-muted-foreground">
-                        {activeTab === 'vsc' 
-                          ? 'Enter your VIN or vehicle details to see personalized pricing'
-                          : 'Fill out the form to see your personalized pricing'
-                        }
-                      </p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            )}
+          )}
 
-            {/* Benefits Card */}
+          {/* Benefits Card */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Why Choose Our Protection?</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <ul className="space-y-3 text-sm">
+                <li className="flex items-center space-x-2">
+                  <CheckCircle className="h-4 w-4 text-green-500" />
+                  <span>Instant quotes with real-time pricing</span>
+                </li>
+                <li className="flex items-center space-x-2">
+                  <CheckCircle className="h-4 w-4 text-green-500" />
+                  <span>VIN-based auto-detection for accuracy</span>
+                </li>
+                <li className="flex items-center space-x-2">
+                  <CheckCircle className="h-4 w-4 text-green-500" />
+                  <span>Competitive rates and flexible terms</span>
+                </li>
+                <li className="flex items-center space-x-2">
+                  <CheckCircle className="h-4 w-4 text-green-500" />
+                  <span>Professional claims processing</span>
+                </li>
+                <li className="flex items-center space-x-2">
+                  <CheckCircle className="h-4 w-4 text-green-500" />
+                  <span>24/7 customer support</span>
+                </li>
+                <li className="flex items-center space-x-2">
+                  <CheckCircle className="h-4 w-4 text-green-500" />
+                  <span>Nationwide coverage</span>
+                </li>
+              </ul>
+            </CardContent>
+          </Card>
+
+          {/* Rest of the cards (Reseller Benefits, VIN Decoder Help, Payment Methods) remain unchanged */}
+          {userType === 'reseller' && (
             <Card>
               <CardHeader>
-                <CardTitle>Why Choose Our Protection?</CardTitle>
+                <CardTitle className="flex items-center space-x-2">
+                  <Building2 className="h-5 w-5" />
+                  <span>Reseller Benefits</span>
+                </CardTitle>
               </CardHeader>
               <CardContent>
                 <ul className="space-y-3 text-sm">
                   <li className="flex items-center space-x-2">
                     <CheckCircle className="h-4 w-4 text-green-500" />
-                    <span>Instant quotes with real-time pricing</span>
+                    <span>Wholesale pricing with commission tracking</span>
                   </li>
                   <li className="flex items-center space-x-2">
                     <CheckCircle className="h-4 w-4 text-green-500" />
-                    <span>VIN-based auto-detection for accuracy</span>
+                    <span>Shareable quote links for easy customer access</span>
                   </li>
                   <li className="flex items-center space-x-2">
                     <CheckCircle className="h-4 w-4 text-green-500" />
-                    <span>Competitive rates and flexible terms</span>
+                    <span>Automated email quote delivery</span>
                   </li>
                   <li className="flex items-center space-x-2">
                     <CheckCircle className="h-4 w-4 text-green-500" />
-                    <span>Professional claims processing</span>
+                    <span>Real-time commission calculations</span>
                   </li>
                   <li className="flex items-center space-x-2">
                     <CheckCircle className="h-4 w-4 text-green-500" />
-                    <span>24/7 customer support</span>
+                    <span>Customer payment processing handled</span>
                   </li>
                   <li className="flex items-center space-x-2">
                     <CheckCircle className="h-4 w-4 text-green-500" />
-                    <span>Nationwide coverage</span>
+                    <span>Sales dashboard and analytics</span>
                   </li>
                 </ul>
               </CardContent>
             </Card>
+          )}
 
-            {/* Reseller Benefits Card */}
-            {userType === 'reseller' && (
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center space-x-2">
-                    <Building2 className="h-5 w-5" />
-                    <span>Reseller Benefits</span>
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <ul className="space-y-3 text-sm">
-                    <li className="flex items-center space-x-2">
-                      <CheckCircle className="h-4 w-4 text-green-500" />
-                      <span>Wholesale pricing with commission tracking</span>
-                    </li>
-                    <li className="flex items-center space-x-2">
-                      <CheckCircle className="h-4 w-4 text-green-500" />
-                      <span>Shareable quote links for easy customer access</span>
-                    </li>
-                    <li className="flex items-center space-x-2">
-                      <CheckCircle className="h-4 w-4 text-green-500" />
-                      <span>Automated email quote delivery</span>
-                    </li>
-                    <li className="flex items-center space-x-2">
-                      <CheckCircle className="h-4 w-4 text-green-500" />
-                      <span>Real-time commission calculations</span>
-                    </li>
-                    <li className="flex items-center space-x-2">
-                      <CheckCircle className="h-4 w-4 text-green-500" />
-                      <span>Customer payment processing handled</span>
-                    </li>
-                    <li className="flex items-center space-x-2">
-                      <CheckCircle className="h-4 w-4 text-green-500" />
-                      <span>Sales dashboard and analytics</span>
-                    </li>
-                  </ul>
-                </CardContent>
-              </Card>
-            )}
-
-            {/* VIN Decoder Help Card */}
-            {activeTab === 'vsc' && (
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center space-x-2">
-                    <Search className="h-5 w-5" />
-                    <span>VIN Help</span>
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="text-sm space-y-3">
-                  <p><strong>Where to find your VIN:</strong></p>
-                  <ul className="space-y-1 ml-4">
-                    <li>• Dashboard (driver's side, visible through windshield)</li>
-                    <li>• Driver's side door jamb sticker</li>
-                    <li>• Vehicle registration or title</li>
-                  </ul>
-                  <p className="text-muted-foreground">
-                    The VIN automatically fills vehicle details and checks eligibility for our service contracts.
-                  </p>
-                  
-                  <div className="bg-blue-50 p-3 rounded border border-blue-200 mt-4">
-                    <p className="text-blue-800 font-medium text-sm">Eligibility Requirements:</p>
-                    <ul className="text-blue-700 text-sm mt-1 space-y-1">
-                      <li>• Vehicle must be 20 model years or newer</li>
-                      <li>• Less than 200,000 miles</li>
-                      <li>• Current mileage required for accurate eligibility check</li>
-                    </ul>
-                  </div>
-                </CardContent>
-              </Card>
-            )}
-
-            {/* Payment Methods Card */}
+          {activeTab === 'vsc' && (
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center space-x-2">
-                  <CreditCard className="h-5 w-5" />
-                  <span>Payment Options</span>
+                  <Search className="h-5 w-5" />
+                  <span>VIN Help</span>
                 </CardTitle>
               </CardHeader>
               <CardContent className="text-sm space-y-3">
-                <div className="space-y-3">
-                  <div className="flex items-center space-x-3">
-                    <div className="bg-blue-100 p-2 rounded">
-                      <CreditCard className="h-4 w-4 text-blue-600" />
-                    </div>
-                    <div>
-                      <p className="font-medium">Credit Card</p>
-                      <p className="text-muted-foreground text-xs">Visa, MasterCard, American Express, Discover</p>
-                    </div>
-                  </div>
-                  {userType === 'reseller' && (
-                    <div className="flex items-center space-x-3">
-                      <div className="bg-green-100 p-2 rounded">
-                        <Link2 className="h-4 w-4 text-green-600" />
-                      </div>
-                      <div>
-                        <p className="font-medium">Share & Pay Link</p>
-                        <p className="text-muted-foreground text-xs">Customer completes payment through secure link</p>
-                      </div>
-                    </div>
-                  )}
-                </div>
-                
-                <div className="bg-gray-50 p-3 rounded border mt-4">
-                  <div className="flex items-center space-x-2">
-                    <Lock className="h-4 w-4 text-gray-600" />
-                    <span className="text-xs text-gray-600 font-medium">Secure Payment Processing</span>
-                  </div>
-                  <p className="text-xs text-gray-500 mt-1">
-                    All payments are encrypted and processed securely through our certified payment partners.
-                  </p>
+                <p>
+                  <strong>Where to find your VIN:</strong>
+                </p>
+                <ul className="space-y-1 ml-4">
+                  <li>• Dashboard (driver's side, visible through windshield)</li>
+                  <li>• Driver's side door jamb sticker</li>
+                  <li>• Vehicle registration or title</li>
+                </ul>
+                <p className="text-muted-foreground">
+                  The VIN automatically fills vehicle details and checks eligibility for our service contracts.
+                </p>
+
+                <div className="bg-blue-50 p-3 rounded border border-blue-200 mt-4">
+                  <p className="text-blue-800 font-medium text-sm">Eligibility Requirements:</p>
+                  <ul className="text-blue-700 text-sm mt-1 space-y-1">
+                    <li>• Vehicle must be 20 model years or newer</li>
+                    <li>• Less than 200,000 miles</li>
+                    <li>• Current mileage required for accurate eligibility check</li>
+                  </ul>
                 </div>
               </CardContent>
             </Card>
-          </div>
-        </div>
+          )}
 
-        {/* Shareable Quote Dialog */}
-        <ShareableQuoteDialog />
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center space-x-2">
+                <CreditCard className="h-5 w-5" />
+                <span>Payment Options</span>
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="text-sm space-y-3">
+              <div className="space-y-3">
+                <div className="flex items-center space-x-3">
+                  <div className="bg-blue-100 p-2 rounded">
+                    <CreditCard className="h-4 w-4 text-blue-600" />
+                  </div>
+                  <div>
+                    <p className="font-medium">Credit Card</p>
+                    <p className="text-muted-foreground text-xs">Visa, MasterCard, American Express, Discover</p>
+                  </div>
+                </div>
+                {userType === 'reseller' && (
+                  <div className="flex items-center space-x-3">
+                    <div className="bg-green-100 p-2 rounded">
+                      <Link2 className="h-4 w-4 text-green-600" />
+                    </div>
+                    <div>
+                      <p className="font-medium">Share & Pay Link</p>
+                      <p className="text-muted-foreground text-xs">Customer completes payment through secure link</p>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              <div className="bg-gray-50 p-3 rounded border mt-4">
+                <div className="flex items-center space-x-2">
+                  <Lock className="h-4 w-4 text-gray-600" />
+                  <span className="text-xs text-gray-600 font-medium">Secure Payment Processing</span>
+                </div>
+                <p className="text-xs text-gray-500 mt-1">
+                  All payments are encrypted and processed securely through our certified payment partners.
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
       </div>
+
+      {/* Shareable Quote Dialog */}
+      <ShareableQuoteDialog />
+    </div>
+  </div>
   )
 }
 
-export default QuotePage
+export default QuotePage  
