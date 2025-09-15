@@ -1789,32 +1789,32 @@ if (showPayment && quote) {
               </CardHeader>
               <CardContent>
                 <Tabs value={activeTab} onValueChange={setActiveTab}>
-                    <TabsList className="grid w-full grid-cols-2 h-14 p-1 bg-gray-100 rounded-lg border shadow-sm">
-                        <TabsTrigger
-                            value="hero"
-                            className="relative h-12 font-bold text-base transition-all duration-200 ease-in-out
-                 data-[state=active]:bg-white data-[state=active]:text-primary
-                 data-[state=active]:shadow-md data-[state=active]:border
-                 data-[state=inactive]:text-gray-600 data-[state=inactive]:hover:text-gray-800
-                 data-[state=inactive]:hover:bg-gray-50
-                 rounded-md flex items-center justify-center gap-2"
-                        >
-                            <Home className="h-5 w-5" />
-                            <span>Hero Products</span>
-                        </TabsTrigger>
-                        <TabsTrigger
-                            value="vsc"
-                            className="relative h-12 font-bold text-base transition-all duration-200 ease-in-out
-                 data-[state=active]:bg-white data-[state=active]:text-primary
-                 data-[state=active]:shadow-md data-[state=active]:border
-                 data-[state=inactive]:text-gray-600 data-[state=inactive]:hover:text-gray-800
-                 data-[state=inactive]:hover:bg-gray-50
-                 rounded-md flex items-center justify-center gap-2"
-                        >
-                            <Car className="h-5 w-5" />
-                            <span>Vehicle Service Contracts</span>
-                        </TabsTrigger>
-                    </TabsList>
+                  <TabsList className="grid w-full grid-cols-1 sm:grid-cols-2 h-14 p-1 bg-gray-100 rounded-lg border shadow-sm">
+                    <TabsTrigger
+                      value="hero"
+                      className="relative h-12 font-bold text-sm sm:text-base transition-all duration-200 ease-in-out
+                      data-[state=active]:bg-white data-[state=active]:text-primary
+                      data-[state=active]:shadow-md data-[state=active]:border
+                      data-[state=inactive]:text-gray-600 data-[state=inactive]:hover:text-gray-800
+                      data-[state=inactive]:hover:bg-gray-50
+                      rounded-md flex items-center justify-center gap-2 w-full"
+                    >
+                      <Home className="h-5 w-5" />
+                      <span>Hero Products</span>
+                    </TabsTrigger>
+                    <TabsTrigger
+                      value="vsc"
+                      className="relative h-12 font-bold text-sm sm:text-base transition-all duration-200 ease-in-out
+                      data-[state=active]:bg-white data-[state=active]:text-primary
+                      data-[state=active]:shadow-md data-[state=active]:border
+                      data-[state=inactive]:text-gray-600 data-[state=inactive]:hover:text-gray-800
+                      data-[state=inactive]:hover:bg-gray-50
+                      rounded-md flex items-center justify-center gap-2 w-full"
+                    >
+                      <Car className="h-5 w-5" />
+                      <span>Vehicle Service Contracts</span>
+                    </TabsTrigger>
+                  </TabsList>
 
                   {/* Hero Products Tab */}
                   <TabsContent value="hero" className="space-y-6">
@@ -1882,30 +1882,30 @@ if (showPayment && quote) {
                           </Select>
                         </div>
 
-                          <div className="space-y-2">
-                              <Label htmlFor="hero-customer">Customer Type</Label>
-                              <Select
-                                  value={heroForm.customer_type}
-                                  onValueChange={(value) => setHeroForm({...heroForm, customer_type: value})}
-                                  disabled={isReseller} // Disable for resellers since they only have wholesale
-                              >
-                                  <SelectTrigger>
-                                      <SelectValue placeholder="Select customer type" />
-                                  </SelectTrigger>
-                                  <SelectContent>
-                                      {isReseller ? (
-                                          <SelectItem value="wholesale">Wholesale/Reseller</SelectItem>
-                                      ) : (
-                                          <SelectItem value="retail">Retail Customer</SelectItem>
-                                      )}
-                                  </SelectContent>
-                              </Select>
-                              {isReseller && (
-                                  <p className="text-xs text-muted-foreground">
-                                      Resellers automatically receive wholesale pricing
-                                  </p>
+                        <div className="space-y-2">
+                          <Label htmlFor="hero-customer">Customer Type</Label>
+                          <Select
+                            value={heroForm.customer_type}
+                            onValueChange={(value) => setHeroForm({...heroForm, customer_type: value})}
+                            disabled={isReseller} // Disable for resellers since they only have wholesale
+                          >
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select customer type" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {isReseller ? (
+                                <SelectItem value="wholesale">Wholesale/Reseller</SelectItem>
+                              ) : (
+                                <SelectItem value="retail">Retail Customer</SelectItem>
                               )}
-                          </div>
+                            </SelectContent>
+                          </Select>
+                          {isReseller && (
+                            <p className="text-xs text-muted-foreground">
+                              Resellers automatically receive wholesale pricing
+                            </p>
+                          )}
+                        </div>
                       </div>
 
                       <Button type="submit" className="w-full" disabled={loading}>
@@ -2155,6 +2155,7 @@ if (showPayment && quote) {
               </CardContent>
             </Card>
           </div>
+        </div>
 
           {/* Quote Results */}
           <div className="space-y-6">
@@ -2335,7 +2336,6 @@ if (showPayment && quote) {
         {/* Shareable Quote Dialog */}
         <ShareableQuoteDialog />
       </div>
-    </div>
   )
 }
 
