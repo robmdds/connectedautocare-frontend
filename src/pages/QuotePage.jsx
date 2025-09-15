@@ -1817,7 +1817,7 @@ if (showPayment && quote) {
                   </TabsList>
 
                   {/* Hero Products Tab */}
-                  <TabsContent value="hero" className="space-y-6">
+                  <TabsContent value="hero" className="mt-6 space-y-6">
                     <form onSubmit={handleHeroSubmit} className="space-y-6">
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div className="space-y-2">
@@ -1915,7 +1915,7 @@ if (showPayment && quote) {
                   </TabsContent>
 
                   {/* Enhanced VSC Tab with VIN Auto-Detection */}
-                  <TabsContent value="vsc" className="space-y-6">
+                  <TabsContent value="vsc" className="mt-6 space-y-6">
                     <form onSubmit={handleVSCSubmit} className="space-y-6">
                       {/* VIN Input Section */}
                       <div className="space-y-4 p-4 bg-blue-50 rounded-lg border">
