@@ -22,7 +22,7 @@ const QuotePage = () => {
   const location = useLocation()
   const [searchParams] = useSearchParams()
   const { user, isAuthenticated, isReseller, isCustomer, token, API_BASE_URL } = useAuth()
-  const [activeTab, setActiveTab] = useState('hero')
+  const [activeTab, setActiveTab] = useState('vsc')
   const [loading, setLoading] = useState(false)
   const [quote, setQuote] = useState(null)
   const [error, setError] = useState('')
