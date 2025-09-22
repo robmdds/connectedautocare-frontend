@@ -1299,13 +1299,31 @@ const QuotePage = () => {
                   <p><strong>Vehicle:</strong> {vinInfo.year} {vinInfo.make} {vinInfo.model || 'Model not specified'}</p>
                   {vinInfo.trim && <p><strong>Trim:</strong> {vinInfo.trim}</p>}
                   {vinInfo.engine && <p><strong>Engine:</strong> {vinInfo.engine}</p>}
-                  <p><strong>Mileage:</strong> {parseInt(vscForm.mileage).toLocaleString()} miles</p>
+                  <p><strong>Current Mileage:</strong> {parseInt(vscForm.mileage).toLocaleString()} miles</p>
+                  
+                  {/* NEW: Contract details section */}
+                  <div className="border-t pt-2 mt-2">
+                    <p><strong>Contract Term:</strong> {vscForm.term_months} months ({Math.round(parseInt(vscForm.term_months) / 12 * 10) / 10} years)</p>
+                    {vscForm.mileage_allowance && (
+                      <p><strong>Mileage Allowance:</strong> {
+                        vscForm.mileage_allowance === 'unlimited' 
+                          ? 'Unlimited miles' 
+                          : `${parseInt(vscForm.mileage_allowance).toLocaleString()} miles total`
+                      }</p>
+                    )}
+                    {vscForm.term_months && vscForm.mileage_allowance && vscForm.mileage_allowance !== 'unlimited' && (
+                      <p><strong>Annual Average:</strong> {Math.round(parseInt(vscForm.mileage_allowance) / parseInt(vscForm.term_months) * 12).toLocaleString()} miles/year</p>
+                    )}
+                  </div>
+                  
                   {eligibilityCheck && (
-                    <p><strong>Eligibility:</strong> 
-                      <span className={eligibilityCheck.eligible ? 'text-green-600 font-medium' : 'text-red-600 font-medium'}>
-                        {eligibilityCheck.eligible ? ' Eligible' : ' Not Eligible'}
-                      </span>
-                    </p>
+                    <div className="border-t pt-2 mt-2">
+                      <p><strong>Eligibility:</strong> 
+                        <span className={eligibilityCheck.eligible ? 'text-green-600 font-medium' : 'text-red-600 font-medium'}>
+                          {eligibilityCheck.eligible ? ' Eligible' : ' Not Eligible'}
+                        </span>
+                      </p>
+                    </div>
                   )}
                 </div>
               </div>
