@@ -911,7 +911,7 @@ const QuotePage = () => {
         mileage: parseInt(vscForm.mileage),
         coverage_level: vscForm.coverage_level,
         term_months: parseInt(vscForm.term_months),
-        mileage_allowance: vscForm.mileage_allowance === 'unlimited' ? 'unlimited' : parseInt(vscForm.mileage_allowance),
+        mileage_allowance: vscForm.mileage_allowance === 'unlimited' ? 'unlimited' : parseInt(vscForm.mileage_allowance), // NEW
         customer_type: vscForm.customer_type,
         vin: vscForm.vin,
         vin_decoded: vinInfo,
@@ -1292,42 +1292,24 @@ const QuotePage = () => {
             )}
 
             {activeTab === 'vsc' && vinInfo && (
-            <div className="space-y-2 pt-4 border-t">
-              <h4 className="font-semibold">Vehicle Information:</h4>
-              <div className="text-sm space-y-1 bg-gray-50 p-3 rounded">
-                <p><strong>VIN:</strong> {vscForm.vin}</p>
-                <p><strong>Vehicle:</strong> {vinInfo.year} {vinInfo.make} {vinInfo.model || 'Model not specified'}</p>
-                {vinInfo.trim && <p><strong>Trim:</strong> {vinInfo.trim}</p>}
-                {vinInfo.engine && <p><strong>Engine:</strong> {vinInfo.engine}</p>}
-                <p><strong>Current Mileage:</strong> {parseInt(vscForm.mileage).toLocaleString()} miles</p>
-                
-                {/* NEW: Contract details section */}
-                <div className="border-t pt-2 mt-2">
-                  <p><strong>Contract Term:</strong> {vscForm.term_months} months ({Math.round(parseInt(vscForm.term_months) / 12 * 10) / 10} years)</p>
-                  {vscForm.mileage_allowance && (
-                    <p><strong>Mileage Allowance:</strong> {
-                      vscForm.mileage_allowance === 'unlimited' 
-                        ? 'Unlimited miles' 
-                        : `${parseInt(vscForm.mileage_allowance).toLocaleString()} miles total`
-                    }</p>
-                  )}
-                  {vscForm.term_months && vscForm.mileage_allowance && vscForm.mileage_allowance !== 'unlimited' && (
-                    <p><strong>Annual Average:</strong> {Math.round(parseInt(vscForm.mileage_allowance) / parseInt(vscForm.term_months) * 12).toLocaleString()} miles/year</p>
-                  )}
-                </div>
-                
-                {eligibilityCheck && (
-                  <div className="border-t pt-2 mt-2">
+              <div className="space-y-2 pt-4 border-t">
+                <h4 className="font-semibold">Vehicle Information:</h4>
+                <div className="text-sm space-y-1 bg-gray-50 p-3 rounded">
+                  <p><strong>VIN:</strong> {vscForm.vin}</p>
+                  <p><strong>Vehicle:</strong> {vinInfo.year} {vinInfo.make} {vinInfo.model || 'Model not specified'}</p>
+                  {vinInfo.trim && <p><strong>Trim:</strong> {vinInfo.trim}</p>}
+                  {vinInfo.engine && <p><strong>Engine:</strong> {vinInfo.engine}</p>}
+                  <p><strong>Mileage:</strong> {parseInt(vscForm.mileage).toLocaleString()} miles</p>
+                  {eligibilityCheck && (
                     <p><strong>Eligibility:</strong> 
                       <span className={eligibilityCheck.eligible ? 'text-green-600 font-medium' : 'text-red-600 font-medium'}>
                         {eligibilityCheck.eligible ? ' Eligible' : ' Not Eligible'}
                       </span>
                     </p>
-                  </div>
-                )}
+                  )}
+                </div>
               </div>
-            </div>
-          )}
+            )}
           </CardContent>
         </Card>
       </motion.div>
@@ -1895,97 +1877,22 @@ if (showPayment && quote) {
                       </div>
 
                       <div className="space-y-2">
-                        <Label htmlFor="vsc-term">Contract Term</Label>
+                        <Label htmlFor="hero-term">Term (Years)</Label>
                         <Select
-                          value={vscForm.term_months}
-                          onValueChange={(value) => setVscForm({ ...vscForm, term_months: value })}
+                          value={heroForm.term_years}
+                          onValueChange={(value) => setHeroForm({ ...heroForm, term_years: value })}
                         >
                           <SelectTrigger>
                             <SelectValue placeholder="Select term" />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="12">12 Months</SelectItem>
-                            <SelectItem value="24">24 Months</SelectItem>
-                            <SelectItem value="36">36 Months</SelectItem>
-                            <SelectItem value="48">48 Months</SelectItem>
-                            <SelectItem value="60">60 Months</SelectItem>
-                            <SelectItem value="72">72 Months</SelectItem>
+                            <SelectItem value="1">1 Year</SelectItem>
+                            <SelectItem value="2">2 Years</SelectItem>
+                            <SelectItem value="3">3 Years</SelectItem>
+                            <SelectItem value="4">4 Years</SelectItem>
+                            <SelectItem value="5">5 Years</SelectItem>
                           </SelectContent>
                         </Select>
-                      </div>
-
-                      <div className="space-y-2">
-                        <Label htmlFor="vsc-mileage-allowance">
-                          Mileage Allowance
-                          <span className="text-sm text-muted-foreground ml-1">(Miles you can drive during contract)</span>
-                        </Label>
-                        <Select
-                          value={vscForm.mileage_allowance}
-                          onValueChange={(value) => setVscForm({ ...vscForm, mileage_allowance: value })}
-                        >
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select mileage allowance" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {calculateSuggestedMileageAllowances().map((option) => (
-                              <SelectItem key={option.value} value={option.value}>
-                                <div className="flex flex-col">
-                                  <span>{option.label}</span>
-                                  {option.description && (
-                                    <span className="text-xs text-muted-foreground">{option.description}</span>
-                                  )}
-                                </div>
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        
-                        {/* Show calculation details when both term and mileage allowance are selected */}
-                        {vscForm.term_months && vscForm.mileage_allowance && vscForm.mileage_allowance !== 'unlimited' && (
-                          <div className="bg-blue-50 p-2 rounded text-xs">
-                            <div className="flex justify-between">
-                              <span>Annual Average:</span>
-                              <span className="font-medium">
-                                {Math.round(parseInt(vscForm.mileage_allowance) / parseInt(vscForm.term_months) * 12).toLocaleString()} miles/year
-                              </span>
-                            </div>
-                            {vinInfo && vscForm.mileage && (
-                              <div className="flex justify-between text-muted-foreground mt-1">
-                                <span>Your Historical:</span>
-                                <span>
-                                  {Math.round(parseInt(vscForm.mileage) / (vinInfo.vehicle_age || 1)).toLocaleString()} miles/year
-                                </span>
-                              </div>
-                            )}
-                          </div>
-                        )}
-                        
-                        {/* Warning if selected allowance is much different from historical usage */}
-                        {vscForm.term_months && vscForm.mileage_allowance && vscForm.mileage_allowance !== 'unlimited' && 
-                        vinInfo && vscForm.mileage && vinInfo.vehicle_age && (
-                          (() => {
-                            const selectedAnnual = parseInt(vscForm.mileage_allowance) / parseInt(vscForm.term_months) * 12;
-                            const historicalAnnual = parseInt(vscForm.mileage) / vinInfo.vehicle_age;
-                            const difference = Math.abs(selectedAnnual - historicalAnnual) / historicalAnnual;
-                            
-                            if (difference > 0.5) {
-                              return (
-                                <div className="bg-yellow-50 border border-yellow-200 p-2 rounded text-xs text-yellow-800">
-                                  <div className="flex items-center space-x-1">
-                                    <AlertCircle className="h-3 w-3" />
-                                    <span>
-                                      {selectedAnnual > historicalAnnual * 1.5 
-                                        ? 'Selected allowance is much higher than your historical usage'
-                                        : 'Selected allowance is much lower than your historical usage'
-                                      }
-                                    </span>
-                                  </div>
-                                </div>
-                              );
-                            }
-                            return null;
-                          })()
-                        )}
                       </div>
 
                       <div className="space-y-2">
@@ -2191,7 +2098,7 @@ if (showPayment && quote) {
                       </div>
 
                       <div className="space-y-2">
-                        <Label htmlFor="vsc-term">Term (Months)</Label>
+                        <Label htmlFor="vsc-term">Contract Term</Label>
                         <Select
                           value={vscForm.term_months}
                           onValueChange={(value) => setVscForm({ ...vscForm, term_months: value })}
@@ -2208,6 +2115,80 @@ if (showPayment && quote) {
                             <SelectItem value="72">72 Months</SelectItem>
                           </SelectContent>
                         </Select>
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="vsc-mileage-allowance">
+                          Mileage Allowance
+                          <span className="text-sm text-muted-foreground ml-1">(Miles you can drive during contract)</span>
+                        </Label>
+                        <Select
+                          value={vscForm.mileage_allowance}
+                          onValueChange={(value) => setVscForm({ ...vscForm, mileage_allowance: value })}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select mileage allowance" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {calculateSuggestedMileageAllowances().map((option) => (
+                              <SelectItem key={option.value} value={option.value}>
+                                <div className="flex flex-col">
+                                  <span>{option.label}</span>
+                                  {option.description && (
+                                    <span className="text-xs text-muted-foreground">{option.description}</span>
+                                  )}
+                                </div>
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        
+                        {/* Show calculation details when both term and mileage allowance are selected */}
+                        {vscForm.term_months && vscForm.mileage_allowance && vscForm.mileage_allowance !== 'unlimited' && (
+                          <div className="bg-blue-50 p-2 rounded text-xs">
+                            <div className="flex justify-between">
+                              <span>Annual Average:</span>
+                              <span className="font-medium">
+                                {Math.round(parseInt(vscForm.mileage_allowance) / parseInt(vscForm.term_months) * 12).toLocaleString()} miles/year
+                              </span>
+                            </div>
+                            {vinInfo && vscForm.mileage && (
+                              <div className="flex justify-between text-muted-foreground mt-1">
+                                <span>Your Historical:</span>
+                                <span>
+                                  {Math.round(parseInt(vscForm.mileage) / (vinInfo.vehicle_age || 1)).toLocaleString()} miles/year
+                                </span>
+                              </div>
+                            )}
+                          </div>
+                        )}
+                        
+                        {/* Warning if selected allowance is much different from historical usage */}
+                        {vscForm.term_months && vscForm.mileage_allowance && vscForm.mileage_allowance !== 'unlimited' && 
+                        vinInfo && vscForm.mileage && vinInfo.vehicle_age && (
+                          (() => {
+                            const selectedAnnual = parseInt(vscForm.mileage_allowance) / parseInt(vscForm.term_months) * 12;
+                            const historicalAnnual = parseInt(vscForm.mileage) / vinInfo.vehicle_age;
+                            const difference = Math.abs(selectedAnnual - historicalAnnual) / historicalAnnual;
+                            
+                            if (difference > 0.5) {
+                              return (
+                                <div className="bg-yellow-50 border border-yellow-200 p-2 rounded text-xs text-yellow-800">
+                                  <div className="flex items-center space-x-1">
+                                    <AlertCircle className="h-3 w-3" />
+                                    <span>
+                                      {selectedAnnual > historicalAnnual * 1.5 
+                                        ? 'Selected allowance is much higher than your historical usage'
+                                        : 'Selected allowance is much lower than your historical usage'
+                                      }
+                                    </span>
+                                  </div>
+                                </div>
+                              );
+                            }
+                            return null;
+                          })()
+                        )}
                       </div>
                     </div>
 
