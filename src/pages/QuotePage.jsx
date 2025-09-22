@@ -2152,34 +2152,12 @@ if (showPayment && quote) {
                               <SelectItem key={option.value} value={option.value}>
                                 <div className="flex flex-col">
                                   <span>{option.label}</span>
-                                  {option.description && (
-                                    <span className="text-xs text-muted-foreground">{option.description}</span>
-                                  )}
                                 </div>
                               </SelectItem>
                             ))}
                           </SelectContent>
                         </Select>
                         
-                        {/* Show calculation details when both term and mileage allowance are selected */}
-                        {vscForm.term_months && vscForm.mileage_allowance && vscForm.mileage_allowance !== 'unlimited' && (
-                          <div className="bg-blue-50 p-2 rounded text-xs">
-                            <div className="flex justify-between">
-                              <span>Annual Average:</span>
-                              <span className="font-medium">
-                                {Math.round(parseInt(vscForm.mileage_allowance) / parseInt(vscForm.term_months) * 12).toLocaleString()} miles/year
-                              </span>
-                            </div>
-                            {vinInfo && vscForm.mileage && (
-                              <div className="flex justify-between text-muted-foreground mt-1">
-                                <span>Your Historical:</span>
-                                <span>
-                                  {Math.round(parseInt(vscForm.mileage) / (vinInfo.vehicle_age || 1)).toLocaleString()} miles/year
-                                </span>
-                              </div>
-                            )}
-                          </div>
-                        )}
                         
                         {/* Warning if selected allowance is much different from historical usage */}
                         {vscForm.term_months && vscForm.mileage_allowance && vscForm.mileage_allowance !== 'unlimited' && 
